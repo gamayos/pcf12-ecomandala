@@ -148,43 +148,122 @@ This ties directly into the global carbon credit market, appealing to companies 
 
 \section{Proposed Architecture}
 
-This section provides visual representations of the proposed architecture for enhancing smart contract \
-security within the Cardano ecosystem through the use of Security Oracles. The diagrams illustrate the \
-conceptual overview, the data flow, and the interaction between the on-chain and off-chain components of the system. \newline \newline
+The following EcoMandala system architecture describes the flow of data from the tasking, collection and processing to its storage and interaction with the blockchain, as well as its use in various applications.
 
-Detailed descriptions of the diagrams are as follows:
+\begin{enumerate}
+    \item Data Collection Layer
 
-\begin{itemize}
-    \item Figure \ref{fig:components_diagram} presents the main components that make up the Security Oracle system, showing how they interlink with each other and the external threat intelligence sources.
-    \item Figures \ref{fig:dataflow_simple_diagram} and \ref{fig:dataflow_pull_diagram} depict the data flow within the system, demonstrating how threat intelligence disseminates throug the system and consumed by smart contracts.
-    %\item Figure  provides a simplified overview of the data flow process, focusing on the key interactions between users, smart contracts, and the Security Oracle.
-\end{itemize}
+    Components:
+    \begin{description}
+        \item[Satellite Sensors:] Captures multispectral imaging data.
+        \item[Climate Data Sensors:] Collects temperature, precipitation, and cloud cover data.
+        \item[Field Sensors:] Collects soil health, moisture levels, and other on-the-ground environmental data.
+    \end{description}
+    Description: This layer represents the sources of environmental data, including satellite imaging, climate sensors, and field data.
+
+    \item Data Ingestion and Processing Layer
+
+    Components:
+    \begin{description}
+        \item[Data Ingestion Pipeline:] Handles the collection of raw data from various sensors.
+        \item[Data Preprocessing Unit:] Performs radiometric calibration, cloud removal, and other preprocessing tasks to clean and prepare the data.
+        \item[Hexagonal Grid Mapping (Uber H3):] Maps environmental data onto a hexagonal grid based on the Uber H3 system.
+    \end{description}
+    Description: This layer is responsible for ingesting raw data and preprocessing it into a standardized format, mapped onto hexagonal units.
+
+    \item Blockchain Interaction Layer
+    
+    Components:
+    \begin{description}
+        \item[NFT Generation Module (NMKR):] Creates NFTs representing each hexagonal unit.
+Smart Contracts: Governs the minting, updating, and transaction of NFTs.
+        \item[Blockchain Network (Cardano):] Stores the NFTs and associated environmental data securely and immutably.
+    \end{description}
+    Description: This layer depicts how processed environmental data is encapsulated into NFTs, which are then minted and managed on the Cardano blockchain.
+
+    \item{Data Access and Interaction Layer}
+
+    Components:
+    \begin{description}
+        \item[API Gateway:] Provides access to NFT data and environmental insights through standardized APIs.
+        \item[User Interface (UI):] A front-end interface for end-users to interact with the data, view NFTs, and analyze environmental conditions.
+    \end{description}
+    Description: This layer represents how end-users and applications access the environmental data stored on the blockchain through APIs and user interfaces.
+
+    \item Application Layer
+
+    Components:
+    \begin{description}
+        \item[Environmental Monitoring Dashboards:] Tools for visualizing environmental data and trends.
+        \item[Compliance Reporting Tools:] Applications that generate reports for environmental compliance.
+        \item[Disaster Management Systems:] Interfaces and tools for real-time disaster monitoring and response.
+        \item[Sustainable Agriculture Platforms:] Tools that leverage data for precision farming and resource management.
+        \item[Carbon Credit Verification Systems:] Applications that track and verify carbon sequestration projects.
+    \end{description} 
+    Description: This layer illustrates the various applications that utilize the data from the EcoMandala service for different use cases.
+
+\end{enumerate}
+
+Flow of Information:
+
+\begin{description}
+
+    \item{Data Collection:} Environmental data is gathered from satellite, climate, and field sensors.
+
+    \item{Data Ingestion and Processing:} The raw data is cleaned, preprocessed, and mapped onto a hexagonal grid.
+
+    \item{Blockchain Interaction:} Processed data is encapsulated into NFTs, which are then minted and stored on the Cardano blockchain.
+
+    \item{Data Access and Interaction:} End-users access this data through APIs and user interfaces, interacting with the NFTs and underlying environmental data.
+
+    \item{Application Use:} Various applications use this data for monitoring, compliance, disaster management, sustainable agriculture, and carbon credit verification.
+
+\end{description}
 
 These diagrams collectively detail the structural and operational nuances of the Security Oracle framework and its integration with the Cardano blockchain.
+
+\begin{itemize}
+    \item Figure \ref{fig:components_diagram} presents the main layers of the EcoMandala system, service architecture and data flow.
+    \item Figures \ref{fig:ui-screen-1} and \ref{fig:ui-screen-2} depict the outline of the basic User Interface (UI) of the EcoMandala service.
+    %\item Figure  provides a simplified overview of the data flow process, focusing on the key interactions between users, smart contracts, and the Security Oracle.
+\end{itemize}
 
 % Placeholder for Components Diagram
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{Images/ComponentsDiagram.jpg}
-\caption{Components of the Security Oracle System}
+\includegraphics[width=\textwidth]{Images/ecomandala-20240912-1.png}
+\caption{EcoMandala system architecture and data flow.}
 \label{fig:components_diagram}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Images/ecomandala-data-20240913-1.png}
+    \caption{On/off chain data structure.}
+    \label{fig:data-structure}
 \end{figure}
 
 % Placeholder for Dataflow Diagram with Simplified Model
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{Images/DataflowDiagramSimple.jpg}
-\caption{Dataflow Diagram - Simple Model}
-\label{fig:dataflow_simple_diagram}
+\includegraphics[width=\textwidth]{Images/screen1-20240913-1.png}
+\caption{EcoMandala UI outline: Screen 1.}
+\label{fig:ui-screen-1}
 \end{figure}
 
 % Placeholder for Dataflow Diagram with Pull Model
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{Images/DataflowDiagramPull.jpg}
-\caption{Dataflow Diagram - "On Demand" Threat Analysis}
-\label{fig:dataflow_pull_diagram}
+\includegraphics[width=\textwidth]{Images/screen2-20240913-1.png}
+\caption{EcoMandala UI outline: Screen 2.}
+\label{fig:ui-screen-2}
 \end{figure}
+
+\newpage
+\subsection{Data Structure}
+\input{schema.tex}
+
+\newpage
 
 
 \section{Project Plan}
