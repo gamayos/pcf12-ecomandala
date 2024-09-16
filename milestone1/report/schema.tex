@@ -1,0 +1,153 @@
+The following JSON schema will be utilised to store environmental data for each of the sites
+\begin{verbatim}
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "EcoMandala Data Structure",
+    "type": "object",
+    "properties": {
+        "hexID": {
+        "type": "string",
+        "description": "Unique identifier for the hexagonal grid cell based on Uber H3 system."
+        },
+        "location": {
+        "type": "object",
+        "description": "Geospatial coordinates of the hexagonal unit.",
+        "properties": {
+            "latitude": {
+            "type": "number",
+            "description": "Latitude of the hexagonal grid center."
+            },
+            "longitude": {
+            "type": "number",
+            "description": "Longitude of the hexagonal grid center."
+            }
+        },
+        "required": ["latitude", "longitude"]
+        },
+        "timestamp": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Timestamp of the data capture."
+        },
+        "environmentalData": {
+        "type": "object",
+        "description": "Environmental data associated with the hexagonal unit.",
+        "properties": {
+            "satelliteImagery": {
+            "type": "object",
+            "description": "Details of the satellite imagery captured.",
+            "properties": {
+                "imageURL": {
+                "type": "string",
+                "format": "uri",
+                "description": "URL to the satellite image."
+                },
+                "resolution": {
+                "type": "string",
+                "description": "Spatial resolution of the image (e.g., '1m/px')."
+                },
+                "bands": {
+                "type": "array",
+                "description": "List of spectral bands captured.",
+                "items": {
+                    "type": "string"
+                }
+                }
+            },
+            "required": ["imageURL", "resolution", "bands"]
+            },
+            "climateData": {
+            "type": "object",
+            "description": "Climate data related to the hexagonal unit.",
+            "properties": {
+                "temperature": {
+                "type": "number",
+                "description": "Temperature in Celsius."
+                },
+                "precipitation": {
+                "type": "number",
+                "description": "Precipitation in mm."
+                },
+                "cloudCover": {
+                "type": "number",
+                "description": "Percentage of cloud cover."
+                }
+            },
+            "required": ["temperature", "precipitation", "cloudCover"]
+            },
+            "soilData": {
+            "type": "object",
+            "description": "Soil data for the hexagonal unit.",
+            "properties": {
+                "moistureLevel": {
+                "type": "number",
+                "description": "Soil moisture level as a percentage."
+                },
+                "pH": {
+                "type": "number",
+                "description": "Soil pH level."
+                },
+                "nutrientLevels": {
+                "type": "object",
+                "description": "Concentration of key soil nutrients.",
+                "properties": {
+                    "nitrogen": {
+                    "type": "number",
+                    "description": "Nitrogen content in mg/kg."
+                    },
+                    "phosphorus": {
+                    "type": "number",
+                    "description": "Phosphorus content in mg/kg."
+                    },
+                    "potassium": {
+                    "type": "number",
+                    "description": "Potassium content in mg/kg."
+                    }
+                },
+                "required": ["nitrogen", "phosphorus", "potassium"]
+                }
+            },
+            "required": ["moistureLevel", "pH", "nutrientLevels"]
+            }
+        },
+        "required": ["satelliteImagery", "climateData", "soilData"]
+        },
+        "nftMetadata": {
+        "type": "object",
+        "description": "Metadata related to the NFT representing this hexagonal unit.",
+        "properties": {
+            "nftID": {
+            "type": "string",
+            "description": "Unique identifier of the NFT on the Cardano blockchain."
+            },
+            "mintedTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the NFT was minted."
+            },
+            "transactionHash": {
+            "type": "string",
+            "description": "Hash of the blockchain transaction that minted the NFT."
+            }
+        },
+        "required": ["nftID", "mintedTimestamp", "transactionHash"]
+        },
+        "dataProvenance": {
+        "type": "object",
+        "description": "Information about the origin and processing of the data.",
+        "properties": {
+            "source": {
+            "type": "string",
+            "description": "Source of the data (e.g., satellite name, sensor type)."
+            },
+            "processingDetails": {
+            "type": "string",
+            "description": "Details on how the data was processed (e.g., algorithms used)."
+            }
+        },
+        "required": ["source", "processingDetails"]
+        }
+    },
+    "required": ["hexID", "location", "timestamp", "environmentalData", "nftMetadata", "dataProvenance"]
+}
+\end{verbatim}
