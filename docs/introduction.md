@@ -1,13 +1,8 @@
 ---
 layout: default
-title: Home
+title: Introduction
 ---
 
-# Welcome to My Jekyll Documentation
+# Introduction
 
-This is a basic Jekyll site hosted with GitHub Pages.
-
-## Getting Started
-
-- [Introduction](introduction.md)
-- [Usage](usage.md)
+Learn about the project and its features.
