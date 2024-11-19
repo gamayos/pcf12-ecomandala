@@ -3,7 +3,7 @@ layout: default
 title: EcoMandala Project Documentation
 ---
 
-![Ecomandala Logo]('/docs/assets/ecomandala-0001.png')
+![Ecomandala Logo](/assets/ecomandala-0001.png)
 
 # Welcome to documentation for the EcoMandala Project.
 
