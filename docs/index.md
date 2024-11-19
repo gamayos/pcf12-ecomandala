@@ -3,7 +3,7 @@ layout: default
 title: EcoMandala Project Documentation
 ---
 
-![My Logo]({{ '/assets/images/my-image.jpg' | relative_url }})
+![My Logo]({{ '/assets/ecomandala-0001.png' | relative_url }})
 
 # Welcome to documentation for the EcoMandala Project.
 
