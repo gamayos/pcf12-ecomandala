@@ -67,6 +67,9 @@
         .tab-content {
             display: none;
         }
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -74,7 +77,7 @@
         <div id="map"></div>
         <div id="info">
             <div id="tabs">
-                <button class="tab-button" onclick="openTab(event, 'explore')">Explore</button>
+                <button class="tab-button active" onclick="openTab(event, 'explore')">Explore</button>
                 <button class="tab-button" onclick="openTab(event, 'my-sites')">My Sites</button>
             </div>
             <div id="explore" class="tab-content active">
@@ -85,39 +88,10 @@
             </div>
             <div id="my-sites" class="tab-content">
                 <h2>My Sites</h2>
-                <div class="site-container">
-                    <p>H3index: <span id="h3index-1">8a2a1072b59ffff</span></p>
-                    <p>Time-stamp: <span id="timestamp-1">2023-09-16T12:00:00Z</span></p>
-                    <p>Status: <span id="status-1">Active</span></p>
-                </div>
-                <div class="site-container">
-                    <p>H3index: <span id="h3index-2">8a2a1072b5affff</span></p>
-                    <p>Time-stamp: <span id="timestamp-2">2023-09-16T12:30:00Z</span></p>
-                    <p>Status: <span id="status-2">Inactive</span></p>
-                </div>
-                <div class="site-container">
-                    <p>H3index: <span id="h3index-3">8a2a1072b5bffff</span></p>
-                    <p>Time-stamp: <span id="timestamp-3">2023-09-16T13:00:00Z</span></p>
-                    <p>Status: <span id="status-3">Pending</span></p>
-                </div>
+                <div id="site-list"></div>
             </div>
         </div>
     </div>
-    <script>
-        function openTab(evt, tabName) {
-            var i, tabcontent, tabbuttons;
-            tabcontent = document.getElementsByClassName("tab-content");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].style.display = "none";
-            }
-            tabbuttons = document.getElementsByClassName("tab-button");
-            for (i = 0; i < tabbuttons.length; i++) {
-                tabbuttons[i].className = tabbuttons[i].className.replace(" active", "");
-            }
-            document.getElementById(tabName).style.display = "block";
-            evt.currentTarget.className += " active";
-        }
-    </script>
     <!-- Include Mapbox GL JS -->
     <script src='https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js'></script>
     <!-- Add your own Mapbox access token -->
@@ -127,20 +101,99 @@
 	    "pk.eyJ1IjoiZ2lyaXNocGFsbGFnYXR0aSIsImEiOiJja2h6NGVuc20wYndjMnlxaDExbzlsa3B2In0.e94ZfcoPleAA2nqjeX10ag";
     </script>
     <script>
-        const EcoManApp = {
-            config: {
-                apiUrl: "https://us-central1-ecomandala.cloudfunctions.net/ecomandala",
-                theme: "dark"
-            },
-            state: {
-                h3index: null
+        function openTab(evt, tabName) {
+            var i, tabcontent, tabbuttons;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                tabcontent[i].classList.remove("active");
             }
-        };
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].className = tabbuttons[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.className += " active";
+        }
+
+        function panToCoordinates(lat, lon, h3Index, ipfsUrl) {
+            map.flyTo({
+                center: [lon, lat],
+                zoom: 15
+            });
+
+            var center = h3.cellToLatLng(h3Index);
+            var boundingBox = h3.cellToBoundary(h3Index, true);
+
+            document.getElementById('hex-info').innerHTML = `
+                <p>H3 Index: ${h3Index}</p>
+                <p>H3 Resolution (Grid Zoom Level): ${resolution}</p>
+                <p>Center Coordinates: ${center[0].toFixed(6)}, ${center[1].toFixed(6)}</p>
+                <p>Bounding Box:</p>
+                <ul>
+                    ${boundingBox.map(coord => `<li>${coord[0].toFixed(6)}, ${coord[1].toFixed(6)}</li>`).join('')}
+                </ul>
+            `;
+
+            map.setFilter('highlighted-hexagon', ['==', 'h3Index', h3Index]);
+
+            if (resolution === 9) {
+                document.getElementById('generate-btn').classList.add('active');
+                document.getElementById('generate-btn').disabled = false;
+                EcoManApp.state.h3index = h3Index;
+            } else {
+                document.getElementById('generate-btn').classList.remove('active');
+                document.getElementById('generate-btn').disabled = true;
+                EcoManApp.state.h3index = null;
+            }
+
+            // Load the image from the IPFS URL under the 'Generate' button
+            document.getElementById('generated-image').src = `https://c-ipfs-gw.nmkr.io/ipfs/${ipfsUrl}`;
+            document.getElementById('generated-image').style.display = 'block';
+
+            openTab({ currentTarget: document.querySelector('.tab-button[onclick="openTab(event, \'explore\')"]') }, 'explore');
+        }
+
+        // Fetch data from the API and populate the "My Sites" tab
+        async function loadMySites() {
+            try {
+                const response = await fetch('https://us-central1-ecomandala.cloudfunctions.net/ecomandala/list');
+                const data = await response.json();
+                const siteList = document.getElementById('site-list');
+                siteList.innerHTML = ''; // Clear any existing content
+
+                data.forEach(site => {
+                    const siteContainer = document.createElement('div');
+                    siteContainer.className = 'site-container';
+                    siteContainer.style.display = 'flex';
+                    siteContainer.innerHTML = `
+                        <div style="width: 60%;">
+                            <p>H3index: <span>${site.h3index}</span></p>
+                            <p>Time-stamp: <span>${site.timestamp}</span></p>
+                            <p>Status: <span>${site.status}</span></p>
+                            <p>Coordinates: <a href="#" onclick="panToCoordinates(${site.lat}, ${site.lon}, '${site.h3index}', '${site.ipfs}')">${site.lat}, ${site.lon}</a></p>
+                        </div>
+                        <div style="width: 40%;">
+                            <img src="https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}" alt="Site Image" style="width: 100%; height: auto;" />
+                        </div>
+                    `;
+                    siteList.appendChild(siteContainer);
+                    siteList.appendChild(document.createElement('hr'));
+                });
+            } catch (error) {
+                console.error('Error fetching site data:', error);
+            }
+        }
+
+        // Set the default tab to be visible on page load
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementById("explore").style.display = "block";
+            loadMySites(); // Load the "My Sites" data when the page loads
+        });
 
         var map = new mapboxgl.Map({
             container: 'map',
-            //style: 'mapbox://styles/mapbox/streets-v12',
-            //style: 'mapbox://styles/mapbox/satellite-v9',
             style: 'mapbox://styles/mapbox/satellite-streets-v12',
             center: [0, 0],
             zoom: 2
@@ -150,11 +203,98 @@
         var selectedHexId = null; // To keep track of the selected hexagon
 
         map.on('load', function() {
+            map.addSource('hexagons', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
+            map.addLayer({
+                id: 'hexagons-layer',
+                type: 'fill',
+                source: 'hexagons',
+                layout: {},
+                paint: {
+                    'fill-color': 'transparent',
+                    'fill-outline-color': '#00ffff'
+                }
+            });
+
+            map.addLayer({
+                id: 'highlighted-hexagon',
+                type: 'line',
+                source: 'hexagons',
+                layout: {},
+                paint: {
+                    'line-color': '#ff0000',
+                    'line-width': 3
+                },
+                filter: ['==', 'h3Index', '']
+            });
+
             generateHexagons();
         });
 
         map.on('moveend', function() {
-            generateHexagons();
+            if (map.getSource('hexagons')) {
+                generateHexagons();
+            }
+        });
+
+        map.on('click', 'hexagons-layer', function(e) {
+            var features = map.queryRenderedFeatures(e.point, {
+                layers: ['hexagons-layer']
+            });
+
+            if (features.length) {
+                var feature = features[0];
+                var h3Index = feature.properties.h3Index;
+                var center = h3.cellToLatLng(h3Index);
+                var boundingBox = h3.cellToBoundary(h3Index, true);
+
+                document.getElementById('hex-info').innerHTML = `
+                    <p>H3 Index: ${h3Index}</p>
+                    <p>H3 Resolution (Grid Zoom Level): ${resolution}</p>
+                    <p>Center Coordinates: ${center[0].toFixed(6)}, ${center[1].toFixed(6)}</p>
+                    <p>Bounding Box:</p>
+                    <ul>
+                        ${boundingBox.map(coord => `<li>${coord[0].toFixed(6)}, ${coord[1].toFixed(6)}</li>`).join('')}
+                    </ul>
+                `;
+
+                map.setFilter('highlighted-hexagon', ['==', 'h3Index', h3Index]);
+
+                if (resolution === 9) {
+                    document.getElementById('generate-btn').classList.add('active');
+                    document.getElementById('generate-btn').disabled = false;
+                    EcoManApp.state.h3index = h3Index;
+                } else {
+                    document.getElementById('generate-btn').classList.remove('active');
+                    document.getElementById('generate-btn').disabled = true;
+                    EcoManApp.state.h3index = null;
+                }
+            }
+        });
+
+        document.getElementById('generate-btn').addEventListener('click', async function() {
+            if (EcoManApp.state.h3index) {
+                try {
+                    const response = await fetch(`${EcoManApp.config.apiUrl}/generate/${EcoManApp.state.h3index}`, {
+                        method: 'POST'
+                    });
+                    const result = await response.json();
+                    console.log('Generation result:', result);
+                    // Display the image under the button
+                    document.getElementById('generated-image').src = 'https://c-ipfs-gw.nmkr.io/ipfs/QmQeV16RPbzq3Dc49mrY4F51QvcoLszLFVBowTeHSsxMsh';
+                    document.getElementById('generated-image').style.display = 'block';
+                    // Reload and regenerate the content of the "My Sites" list
+                    loadMySites();
+                } catch (error) {
+                    console.error('Error generating content:', error);
+                }
+            }
         });
 
         function generateHexagons() {
@@ -163,9 +303,7 @@
             var ne = bounds.getNorthEast();
 
             var zoom = map.getZoom();
-            //var resolution = Math.max(1, Math.min(8, Math.floor(zoom)));
-            //resolution = Math.max(1, Math.min(8, Math.floor(zoom) - 1));
-            resolution = Math.max(0, Math.min(15, Math.round(0.7 * zoom - 2)));
+            resolution = Math.min(9, Math.max(0, Math.min(15, Math.round(0.7 * zoom - 2))));
 
             var polygon = [[
                 [sw.lat, sw.lng],
@@ -181,212 +319,44 @@
             var features = hexagons.map(function(h3Index) {
                 var coordinates = [h3.cellToBoundary(h3Index, true)];
                 return {
-                    "type": "Feature",
-                    "properties": {
-                        "h3Index": h3Index
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: coordinates
                     },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": coordinates
+                    properties: {
+                        h3Index: h3Index
                     }
                 };
             });
 
-            var hexSourceData = {
-                "type": "FeatureCollection",
-                "features": features
-            };
-
-            if (map.getSource('h3-hexagons')) {
-                map.getSource('h3-hexagons').setData(hexSourceData);
-            } else {
-                map.addSource('h3-hexagons', {
-                    "type": "geojson",
-                    "data": hexSourceData
-                });
-                map.addLayer({
-                    "id": "h3-hexagons",
-                    "type": "fill",
-                    "source": "h3-hexagons",
-                    "paint": {
-                        "fill-outline-color": "#000",
-                        "fill-color": "#088",
-                        "fill-opacity": 0.3
-                    }
-                });
-
-                // Add a layer for the highlighted hexagon
-                map.addLayer({
-                    "id": "h3-hexagon-highlight",
-                    "type": "line",
-                    "source": "h3-hexagons",
-                    "paint": {
-                        "line-color": "#FF0000",
-                        "line-width": 4
-                    },
-                    "filter": ["==", "h3Index", ""]
-                });
-
-                // Add click event
-                map.on('click', 'h3-hexagons', function(e) {
-                    var h3Index = e.features[0].properties.h3Index;
-                    EcoManApp.state.h3index = h3Index
-                    showHexInfo(h3Index);
-                    highlightHexagon(h3Index);
-                });
-
-                // Deselect hexagon when clicking outside
-                map.on('click', function(e) {
-                    var features = map.queryRenderedFeatures(e.point, { layers: ['h3-hexagons'] });
-                    if (features.length === 0) {
-                        deselectHexagon();
-                    }
-                });
-
-                // Change the cursor to a pointer when the mouse is over the hexagons
-                map.on('mouseenter', 'h3-hexagons', function () {
-                    map.getCanvas().style.cursor = 'pointer';
-                });
-
-                // Change it back when it leaves
-                map.on('mouseleave', 'h3-hexagons', function () {
-                    map.getCanvas().style.cursor = '';
+            // Add the hexagons to the map
+            if (map.getSource('hexagons')) {
+                map.getSource('hexagons').setData({
+                    type: 'FeatureCollection',
+                    features: features
                 });
             }
-
-            // Update the highlighted hexagon if needed
-            if (selectedHexId) {
-                highlightHexagon(selectedHexId);
+        }
+    </script>
+    <!-- Include Mapbox GL JS -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js'></script>
+    <!-- Add your own Mapbox access token -->
+    <script>
+        //mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN'; // Replace with your Mapbox access token
+          mapboxgl.accessToken =
+        "pk.eyJ1IjoiZ2lyaXNocGFsbGFnYXR0aSIsImEiOiJja2h6NGVuc20wYndjMnlxaDExbzlsa3B2In0.e94ZfcoPleAA2nqjeX10ag";
+    </script>
+    <script>
+        const EcoManApp = {
+            config: {
+                apiUrl: "https://us-central1-ecomandala.cloudfunctions.net/ecomandala",
+                theme: "dark"
+            },
+            state: {
+                h3index: null
             }
-        }
-
-        function showHexInfo(h3Index) {
-            var center = h3.cellToLatLng(h3Index); // returns [lat, lng]
-            var boundary = h3.cellToBoundary(h3Index, true); // true for GeoJSON coordinate order [lng, lat]
-            var cellResolution = h3.getResolution(h3Index);
-
-            // Get the bounding box of the cell
-            var bbox = boundary.reduce(function (bbox, coord) {
-                if (!bbox) {
-                    return {
-                        minLng: coord[0],
-                        minLat: coord[1],
-                        maxLng: coord[0],
-                        maxLat: coord[1]
-                    };
-                } else {
-                    return {
-                        minLng: Math.min(bbox.minLng, coord[0]),
-                        minLat: Math.min(bbox.minLat, coord[1]),
-                        maxLng: Math.max(bbox.maxLng, coord[0]),
-                        maxLat: Math.max(bbox.maxLat, coord[1])
-                    };
-                }
-            }, null);
-
-            var infoHtml = '<p><strong>H3 Index:</strong> ' + h3Index + '</p>';
-            infoHtml += '<p><strong>H3 Resolution (Grid Zoom Level):</strong> ' + resolution + '</p>';
-            infoHtml += '<p><strong>Center Coordinates:</strong> ' + center[0].toFixed(6) + ', ' + center[1].toFixed(6) + '</p>';
-            infoHtml += '<p><strong>Bounding Box:</strong></p>';
-            infoHtml += '<ul>';
-            infoHtml += '<li>Min Longitude: ' + bbox.minLng.toFixed(6) + '</li>';
-            infoHtml += '<li>Min Latitude: ' + bbox.minLat.toFixed(6) + '</li>';
-            infoHtml += '<li>Max Longitude: ' + bbox.maxLng.toFixed(6) + '</li>';
-            infoHtml += '<li>Max Latitude: ' + bbox.maxLat.toFixed(6) + '</li>';
-            infoHtml += '</ul>';
-
-            document.getElementById('hex-info').innerHTML = infoHtml;
-
-            // Update the button based on resolution and selection
-            updateGenerateButton(cellResolution);
-        }
-
-        function highlightHexagon(h3Index) {
-            selectedHexId = h3Index;
-            map.setFilter('h3-hexagon-highlight', ['==', 'h3Index', h3Index]);
-        }
-
-        function deselectHexagon() {
-            selectedHexId = null;
-            map.setFilter('h3-hexagon-highlight', ['==', 'h3Index', '']);
-            document.getElementById('hex-info').innerHTML = 'Click on a hexagon to see its information.';
-
-            // Deactivate the button
-            var generateBtn = document.getElementById('generate-btn');
-            generateBtn.classList.remove('active');
-            generateBtn.disabled = true;
-            // Inside deselectHexagon()
-            document.getElementById('generated-image').style.display = 'none';
-
-            // Update the button
-            updateGenerateButton();
-        }
-        
-        // Update the Generate button label and state
-        function updateGenerateButton(cellResolution) {
-            var generateBtn = document.getElementById('generate-btn');
-            var imgElement = document.getElementById('generated-image');
-            var buttonLabel = '';
-
-            if (cellResolution === undefined) {
-                // No cell selected
-                generateBtn.disabled = true;
-                generateBtn.classList.remove('active');
-                if (resolution < 9) {
-                    buttonLabel = 'Zoom in to Generate';
-                } else if (resolution > 9) {
-                    buttonLabel = 'Zoom out to Generate';
-                } else {
-                    buttonLabel = 'Select a cell to Generate';
-                }
-            } else {
-                // Cell is selected
-                if (cellResolution < 9) {
-                    generateBtn.disabled = true;
-                    generateBtn.classList.remove('active');
-                    buttonLabel = 'Zoom in to Generate';
-                } else if (cellResolution > 9) {
-                    generateBtn.disabled = true;
-                    generateBtn.classList.remove('active');
-                    buttonLabel = 'Zoom out to Generate';
-                } else {
-                    // Resolution is 9
-                    generateBtn.disabled = false;
-                    generateBtn.classList.add('active');
-                    buttonLabel = 'Generate';
-                }
-            }
-
-            generateBtn.textContent = buttonLabel;
-            // Hide the image when the button label changes
-            imgElement.style.display = 'none';
-        }
-
-        document.getElementById('generate-btn').addEventListener('click', function() {
-            if (!this.disabled) {
-
-                // Replace with your Cloud Function URL
-                const cloudFunctionUrl = EcoManApp.config.apiUrl+"/generate/"+EcoManApp.state.h3index;
-
-                // Fetch data from the Cloud Function
-                fetch(cloudFunctionUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('HTTP error! Status: ${response.status}');
-                    }
-                    return response.json();
-                })
-                .then(data => console.log('Data:', data))
-                .catch(error => console.error('Error:', error));
-
-                // Load the image under the button
-                var imgElement = document.getElementById('generated-image');
-                //imgElement.src = 'https://storage.googleapis.com/0x7ff601307fa7/ecomandala-0001.png';
-                imgElement.src = 'https://c-ipfs-gw.nmkr.io/ipfs/QmQeV16RPbzq3Dc49mrY4F51QvcoLszLFVBowTeHSsxMsh';
-                imgElement.style.display = 'block';
-            }
-        });
-
+        };
     </script>
 </body>
 </html>
