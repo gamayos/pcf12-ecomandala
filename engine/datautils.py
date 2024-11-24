@@ -1,3 +1,13 @@
+import urllib.request
+import json, datetime, cv2
+import numpy as np
+from skimage import io, color, transform
+from scipy.interpolate import interp2d
+#from skimage.color import rgb2hsv, hsv2rgb
+#from skimage.transform import rotate
+from matplotlib import cm
+import matplotlib.pyplot as plt
+
 import openmeteo_requests
 
 import requests_cache
@@ -49,3 +59,54 @@ def fetch_meteo(args):
     args.daily_data["temperature_2m_min"] = daily_temperature_2m_min
     args.daily_data["sunshine_duration"] = daily_sunshine_duration
     args.daily_data["precipitation_sum"] = daily_precipitation_sum
+
+def topolar(mat):
+
+    angle_max = np.deg2rad(180)
+    r_max = 20
+    x = np.linspace(-20, 20, 800)
+    y = np.linspace(20, -20, 800)
+    y, x = np.ix_(y, x)
+    r = np.hypot(x, y)
+    a = np.arctan2(x, y)
+
+    map_x = r / r_max * mat.shape[1]
+    map_y = a / (2 * angle_max) * mat.shape[0] + mat.shape[0] * 0.5
+
+    return cv2.remap(mat, map_x.astype(np.float32), map_y.astype(np.float32), cv2.INTER_CUBIC)
+
+def render_temperature(args):
+
+    Nt = len(args.daily_data['date'])
+    tt = np.zeros((Nt,4))
+    tt[:,2] = args.daily_data['temperature_2m_max']
+    tt[:,3] = args.daily_data['temperature_2m_min']
+
+    tmat = np.clip((10+tt[:,[2,3]])/40,0,1)
+    tmat = np.r_['1', np.zeros((Nt,1)), tmat, np.zeros((Nt,1))].T
+    ttmat = interp2d(np.r_[0:Nt], np.c_[0:4], tmat)
+    ttmat = ttmat(np.r_[0:Nt], np.r_[0:1:5j,1:2:45j,2:3:5j])
+
+    ttmat = cm.get_cmap('coolwarm')((ttmat*255).astype(np.uint8))[:,-360:]
+
+    return ttmat
+
+def render_precipitation(args):
+    Nt = len(args.daily_data['date'])
+    tt = np.zeros((Nt,4))
+    tt[:,0] = args.daily_data['sunshine_duration']
+    tt[:,0] = 1. - tt[:,0]/tt[:,0].max()
+    tt[:,1] = args.daily_data['precipitation_sum']
+    tt[:,1] /= tt[:,1].max()
+    tt[:,2] = tt[:,1]
+    tmat = np.sqrt(tt)
+    
+    ptmat = interp2d(np.r_[0:Nt], np.c_[0:4], tmat.T)
+    ptmat = ptmat(np.r_[0:Nt], np.r_[0:1:8j,1:2:24j,2:3:3j])
+
+    ptmat = cm.get_cmap('bone')((ptmat*255).astype(np.uint8))[:,-360:]
+
+    return ptmat
+
+def save_figure_to_png(fig, filename):
+    fig.savefig(filename, format='png', dpi=300)
