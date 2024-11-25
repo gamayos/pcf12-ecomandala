@@ -41,6 +41,14 @@
             background-color: red;
             cursor: pointer;
         }
+        #generate-btn.generating {
+            background-color: amber;
+            cursor: not-allowed;
+        }
+        #generate-btn.mint {
+            background-color: green;
+            cursor: not-allowed;
+        }
         #generated-image {
             display: none;
             margin-top: 20px;
@@ -117,7 +125,35 @@
             evt.currentTarget.className += " active";
         }
 
+        function updateGenerateButtonState(state) {
+            const generateBtn = document.getElementById('generate-btn');
+            const generatedImage = document.getElementById('generated-image');
+            generateBtn.classList.remove('active', 'generating', 'mint');
+            generateBtn.disabled = true;
+
+            switch (state) {
+                case 'inactive':
+                    generateBtn.textContent = 'Select zoom-9 cell to generate';
+                    generatedImage.style.display = 'none'; // Hide the image
+                    break;
+                case 'active':
+                    generateBtn.classList.add('active');
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate';
+                    break;
+                case 'generating':
+                    generateBtn.classList.add('generating');
+                    generateBtn.textContent = 'Generating EcoMandala ...';
+                    break;
+                case 'mint':
+                    generateBtn.classList.add('mint');
+                    generateBtn.textContent = 'Mint';
+                    break;
+            }
+        }
+
         function panToCoordinates(lat, lon, h3Index, ipfsUrl) {
+            const res = h3.getResolution(h3Index);
             map.flyTo({
                 center: [lon, lat],
                 zoom: 15
@@ -126,9 +162,11 @@
             var center = h3.cellToLatLng(h3Index);
             var boundingBox = h3.cellToBoundary(h3Index, true);
 
+            console.log('Resolution:', res);
+
             document.getElementById('hex-info').innerHTML = `
                 <p>H3 Index: ${h3Index}</p>
-                <p>H3 Resolution (Grid Zoom Level): ${resolution}</p>
+                <p>H3 Resolution (Grid Zoom Level): ${res}</p>
                 <p>Center Coordinates: ${center[0].toFixed(6)}, ${center[1].toFixed(6)}</p>
                 <p>Bounding Box:</p>
                 <ul>
@@ -136,23 +174,37 @@
                 </ul>
             `;
 
-            map.setFilter('highlighted-hexagon', ['==', 'h3Index', h3Index]);
+            var site = EcoManApp.state.sites.find(site => site.h3index === h3Index);
+            var highlightColor = site ? '#00ff00' : (res === 9 ? '#ff0000' : '#00ffff');
 
-            if (resolution === 9) {
-                document.getElementById('generate-btn').classList.add('active');
-                document.getElementById('generate-btn').disabled = false;
+            map.setFilter('highlighted-hexagon', ['==', 'h3Index', h3Index]);
+            map.setPaintProperty('highlighted-hexagon', 'line-color', highlightColor);
+
+            if (res === 9) {
                 EcoManApp.state.h3index = h3Index;
+                if (site) {
+                    updateGenerateButtonState('mint');
+                    document.getElementById('generated-image').src = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
+                    document.getElementById('generated-image').style.display = 'block';
+                } else {
+                    updateGenerateButtonState('active');
+                }
             } else {
-                document.getElementById('generate-btn').classList.remove('active');
-                document.getElementById('generate-btn').disabled = true;
+                updateGenerateButtonState('inactive');
                 EcoManApp.state.h3index = null;
             }
 
-            // Load the image from the IPFS URL under the 'Generate' button
-            document.getElementById('generated-image').src = `https://c-ipfs-gw.nmkr.io/ipfs/${ipfsUrl}`;
-            document.getElementById('generated-image').style.display = 'block';
-
             openTab({ currentTarget: document.querySelector('.tab-button[onclick="openTab(event, \'explore\')"]') }, 'explore');
+
+            // Simulate click on the selected cell
+            /*
+            setTimeout(() => {
+                map.fire('click', {
+                    lngLat: [lon, lat],
+                    point: map.project([lon, lat])
+                });
+            }, 1000); // Adjust the timeout as needed
+            */
         }
 
         // Fetch data from the API and populate the "My Sites" tab
@@ -162,6 +214,8 @@
                 const data = await response.json();
                 const siteList = document.getElementById('site-list');
                 siteList.innerHTML = ''; // Clear any existing content
+
+                EcoManApp.state.sites = data; // Store the site data in the state
 
                 data.forEach(site => {
                     const siteContainer = document.createElement('div');
@@ -223,6 +277,17 @@
             });
 
             map.addLayer({
+                id: 'hexagons-outline',
+                type: 'line',
+                source: 'hexagons',
+                layout: {},
+                paint: {
+                    'line-color': '#00ffff',
+                    'line-width': 1 // Increase the line width
+                }
+            });
+
+            map.addLayer({
                 id: 'highlighted-hexagon',
                 type: 'line',
                 source: 'hexagons',
@@ -264,15 +329,23 @@
                     </ul>
                 `;
 
+                var site = EcoManApp.state.sites.find(site => site.h3index === h3Index);
+                var highlightColor = site ? '#00ff00' : (resolution === 9 ? '#ff0000' : '#00ffff');
+
                 map.setFilter('highlighted-hexagon', ['==', 'h3Index', h3Index]);
+                map.setPaintProperty('highlighted-hexagon', 'line-color', highlightColor);
 
                 if (resolution === 9) {
-                    document.getElementById('generate-btn').classList.add('active');
-                    document.getElementById('generate-btn').disabled = false;
                     EcoManApp.state.h3index = h3Index;
+                    if (site) {
+                        updateGenerateButtonState('mint');
+                        document.getElementById('generated-image').src = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
+                        document.getElementById('generated-image').style.display = 'block';
+                    } else {
+                        updateGenerateButtonState('active');
+                    }
                 } else {
-                    document.getElementById('generate-btn').classList.remove('active');
-                    document.getElementById('generate-btn').disabled = true;
+                    updateGenerateButtonState('inactive');
                     EcoManApp.state.h3index = null;
                 }
             }
@@ -280,19 +353,25 @@
 
         document.getElementById('generate-btn').addEventListener('click', async function() {
             if (EcoManApp.state.h3index) {
+                updateGenerateButtonState('generating');
+                // Display the placeholder image immediately
+                document.getElementById('generated-image').src = 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88/assets/placeholder1.png';
+                document.getElementById('generated-image').style.display = 'block';
+
                 try {
                     const response = await fetch(`${EcoManApp.config.apiUrl}/generate/${EcoManApp.state.h3index}`, {
                         method: 'POST'
                     });
                     const result = await response.json();
                     console.log('Generation result:', result);
-                    // Display the image under the button
-                    document.getElementById('generated-image').src = 'https://c-ipfs-gw.nmkr.io/ipfs/QmQeV16RPbzq3Dc49mrY4F51QvcoLszLFVBowTeHSsxMsh';
-                    document.getElementById('generated-image').style.display = 'block';
+                    // Replace the placeholder image with the generated image
+                    document.getElementById('generated-image').src = `https://c-ipfs-gw.nmkr.io/ipfs/${result.IPFS}`;
+                    updateGenerateButtonState('mint');
                     // Reload and regenerate the content of the "My Sites" list
                     loadMySites();
                 } catch (error) {
                     console.error('Error generating content:', error);
+                    updateGenerateButtonState('inactive');
                 }
             }
         });
@@ -318,6 +397,7 @@
             // Now create GeoJSON features for these hexagons
             var features = hexagons.map(function(h3Index) {
                 var coordinates = [h3.cellToBoundary(h3Index, true)];
+                var color = (resolution === 9 && EcoManApp.state.sites.some(site => site.h3index === h3Index)) ? '#00ff00' : '#00ffff'; // Green if in site list and zoom level is 9, else cyan
                 return {
                     type: 'Feature',
                     geometry: {
@@ -325,7 +405,8 @@
                         coordinates: coordinates
                     },
                     properties: {
-                        h3Index: h3Index
+                        h3Index: h3Index,
+                        color: color
                     }
                 };
             });
@@ -337,6 +418,9 @@
                     features: features
                 });
             }
+
+            // Update the hexagon outlines
+            map.setPaintProperty('hexagons-outline', 'line-color', ['get', 'color']);
         }
     </script>
     <!-- Include Mapbox GL JS -->
