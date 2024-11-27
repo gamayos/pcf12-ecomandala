@@ -157,10 +157,10 @@
             try {
                 const response = await fetch('https://us-central1-ecomandala.cloudfunctions.net/ecomandala/meteo/8929a1d7577ffff-20241126-0ea1f504');
                 const data = await response.json();
-                console.log('Site data:', data);
                 const minTemps = data.temperature_2m_min;
                 const maxTemps = data.temperature_2m_max;
-                const dates = data.date;
+                const dates = data.juldate;
+                console.log('Site dates:', dates);
                 //const dates = data.map(entry => entry.date);
                 //const minTemps = data.map(entry => entry.min_temp);
                 //const maxTemps = data.map(entry => entry.max_temp);
