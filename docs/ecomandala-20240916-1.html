@@ -93,6 +93,7 @@
                 <div id="hex-info">Click on a hexagon to see its information.</div>
                 <button id="generate-btn" disabled>Generate</button>
                 <img id="generated-image" src="" alt="Generated Content" />
+                <div id="site-data" style="display: none;"></div> <!-- Move site-data div here -->
             </div>
             <div id="my-sites" class="tab-content">
                 <h2>My Sites</h2>
@@ -152,6 +153,45 @@
             }
         }
 
+        async function loadSiteData(h3Index) {
+            try {
+                const response = await fetch('https://us-central1-ecomandala.cloudfunctions.net/ecomandala/meteo/8929a1d7577ffff-20241126-0ea1f504');
+                const data = await response.json();
+                console.log('Site data:', data);
+                const minTemps = data.temperature_2m_min;
+                const maxTemps = data.temperature_2m_max;
+                const dates = data.date;
+                //const dates = data.map(entry => entry.date);
+                //const minTemps = data.map(entry => entry.min_temp);
+                //const maxTemps = data.map(entry => entry.max_temp);
+
+                const trace1 = {
+                    x: dates,
+                    y: minTemps,
+                    name: 'Min Temperature',
+                    type: 'scatter'
+                };
+
+                const trace2 = {
+                    x: dates,
+                    y: maxTemps,
+                    name: 'Max Temperature',
+                    type: 'scatter'
+                };
+
+                const layout = {
+                    title: 'Daily Min and Max Temperature',
+                    xaxis: { title: 'Date' },
+                    yaxis: { title: 'Temperature (°C)' }
+                };
+
+                Plotly.newPlot('site-data', [trace1, trace2], layout);
+                document.getElementById('site-data').style.display = 'block'; // Show the site-data div after plotting
+            } catch (error) {
+                console.error('Error loading site data:', error);
+            }
+        }
+
         function panToCoordinates(lat, lon, h3Index, ipfsUrl) {
             const res = h3.getResolution(h3Index);
             map.flyTo({
@@ -186,25 +226,20 @@
                     updateGenerateButtonState('mint');
                     document.getElementById('generated-image').src = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
                     document.getElementById('generated-image').style.display = 'block';
+                    document.getElementById('site-data').style.display = 'block';
+                    loadSiteData(h3Index); // Load site data and generate plot
                 } else {
                     updateGenerateButtonState('active');
+                    document.getElementById('site-data').style.display = 'none'; // Hide the site-data div if no site is selected
                 }
             } else {
                 updateGenerateButtonState('inactive');
                 EcoManApp.state.h3index = null;
+                document.getElementById('site-data').style.display = 'none'; // Hide the site-data div if resolution is not 9
             }
 
             openTab({ currentTarget: document.querySelector('.tab-button[onclick="openTab(event, \'explore\')"]') }, 'explore');
 
-            // Simulate click on the selected cell
-            /*
-            setTimeout(() => {
-                map.fire('click', {
-                    lngLat: [lon, lat],
-                    point: map.project([lon, lat])
-                });
-            }, 1000); // Adjust the timeout as needed
-            */
         }
 
         // Fetch data from the API and populate the "My Sites" tab
@@ -228,7 +263,7 @@
                             <p>Status: <span>${site.status}</span></p>
                             <p>Coordinates: <a href="#" onclick="panToCoordinates(${site.lat}, ${site.lon}, '${site.h3index}', '${site.ipfs}')">${site.lat}, ${site.lon}</a></p>
                         </div>
-                        <div style="width: 40%;">
+                        <div id="mandala" style="width: 40%;">
                             <img src="https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}" alt="Site Image" style="width: 100%; height: auto;" />
                         </div>
                     `;
@@ -442,5 +477,6 @@
             }
         };
     </script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </body>
 </html>

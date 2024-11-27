@@ -7,6 +7,7 @@ from scipy.interpolate import interp2d
 #from skimage.transform import rotate
 from matplotlib import cm
 import matplotlib.pyplot as plt
+from google.cloud import storage
 
 import openmeteo_requests
 
@@ -14,6 +15,13 @@ import requests_cache
 import pandas as pd
 from retry_requests import retry
 import numpy as np
+
+def gcp_upload_file(args, local_name, gcp_name):
+    
+    client = storage.Client.create_anonymous_client()
+    bucket = client.bucket('ecomandala-preprod-9f3489c8-eb24-4d88')
+    bucket.blob(gcp_name).upload_from_filename(local_name)
+    return gcp_name
 
 def fetch_meteo(args):
 
@@ -26,8 +34,8 @@ def fetch_meteo(args):
     # The order of variables in hourly or daily is important to assign them correctly below
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
-        "latitude": 52.52,
-        "longitude": 13.41,
+        "latitude": args.latlon[0],
+        "longitude": args.latlon[1],
         "start_date": "2023-11-22",
         "end_date": "2024-11-22",
         "daily": ["temperature_2m_max", "temperature_2m_min", "sunshine_duration", "precipitation_sum"],
@@ -42,6 +50,7 @@ def fetch_meteo(args):
     print(f"Timezone {response.Timezone()} {response.TimezoneAbbreviation()}")
     print(f"Timezone difference to GMT+0 {response.UtcOffsetSeconds()} s")
 
+    args.meteo_response = response
     # Process daily data. The order of variables needs to be the same as requested.
     daily = response.Daily()
     daily_temperature_2m_max = daily.Variables(0).ValuesAsNumpy()
@@ -50,11 +59,12 @@ def fetch_meteo(args):
     daily_precipitation_sum = daily.Variables(3).ValuesAsNumpy()
 
     args.daily_data = {"date": pd.date_range(
-        start = pd.to_datetime(daily.Time(), unit = "s", utc = True),
-        end = pd.to_datetime(daily.TimeEnd(), unit = "s", utc = True),
-        freq = pd.Timedelta(seconds = daily.Interval()),
-        inclusive = "left"
+        start=pd.to_datetime(daily.Time(), unit="s", utc=True).normalize().strftime('%Y-%m-%d'),
+        end=pd.to_datetime(daily.TimeEnd(), unit="s", utc=True).normalize().strftime('%Y-%m-%d'),
+        freq=pd.Timedelta(days=1),
+        inclusive="left"
     )}
+    args.daily_data['juldate'] = args.daily_data['date'].to_julian_date().astype(int)
     args.daily_data["temperature_2m_max"] = daily_temperature_2m_max
     args.daily_data["temperature_2m_min"] = daily_temperature_2m_min
     args.daily_data["sunshine_duration"] = daily_sunshine_duration
@@ -110,3 +120,7 @@ def render_precipitation(args):
 
 def save_figure_to_png(fig, filename):
     fig.savefig(filename, format='png', dpi=300)
+
+def save_daily_data_to_json(args, filename):
+    with open(filename, 'w') as f:
+        json.dump(args.daily_data, f, default=str)
