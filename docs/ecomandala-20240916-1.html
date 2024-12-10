@@ -110,6 +110,7 @@
 	    "pk.eyJ1IjoiZ2lyaXNocGFsbGFnYXR0aSIsImEiOiJja2h6NGVuc20wYndjMnlxaDExbzlsa3B2In0.e94ZfcoPleAA2nqjeX10ag";
     </script>
     <script>
+        const dataroot = 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88';
         function openTab(evt, tabName) {
             var i, tabcontent, tabbuttons;
             tabcontent = document.getElementsByClassName("tab-content");
@@ -256,6 +257,18 @@
                     const siteContainer = document.createElement('div');
                     siteContainer.className = 'site-container';
                     siteContainer.style.display = 'flex';
+                    if (site.ipfs=='') {
+                        h3id1 = h3.cellToParent(site.h3index, 1).substring(0, 5);
+                        h3id5 = h3.cellToParent(site.h3index, 5).substring(0, 8);
+                        date = site.timestamp.substring(0, 10).replace(/-/g, '');
+                        pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
+                        console.log(h3id1, h3id5, pid);
+                        site.image_url = `${dataroot}/${h3id1}/${h3id5}/${pid}/${pid}-mandala.png`;
+                    }
+                    else {
+                        site.image_url = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
+                    }
+                    console.log(site.ipfs);
                     siteContainer.innerHTML = `
                         <div style="width: 60%;">
                             <p>H3index: <span>${site.h3index}</span></p>
@@ -264,7 +277,7 @@
                             <p>Coordinates: <a href="#" onclick="panToCoordinates(${site.lat}, ${site.lon}, '${site.h3index}', '${site.ipfs}')">${site.lat}, ${site.lon}</a></p>
                         </div>
                         <div id="mandala" style="width: 40%;">
-                            <img src="https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}" alt="Site Image" style="width: 100%; height: auto;" />
+                            <img src="${site.image_url}" alt="Site Image" style="width: 100%; height: auto;" />
                         </div>
                     `;
                     siteList.appendChild(siteContainer);
