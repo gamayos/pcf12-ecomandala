@@ -193,20 +193,20 @@
             }
         }
 
-        function panToCoordinates(lat, lon, h3Index, ipfsUrl) {
-            const res = h3.getResolution(h3Index);
+        function panToCoordinates(lat, lon, h3index, ipfsUrl) {
+            const res = h3.getResolution(h3index);
             map.flyTo({
                 center: [lon, lat],
                 zoom: 15
             });
 
-            var center = h3.cellToLatLng(h3Index);
-            var boundingBox = h3.cellToBoundary(h3Index, true);
+            var center = h3.cellToLatLng(h3index);
+            var boundingBox = h3.cellToBoundary(h3index, true);
 
             console.log('Resolution:', res);
 
             document.getElementById('hex-info').innerHTML = `
-                <p>H3 Index: ${h3Index}</p>
+                <p>H3 Index: ${h3index}</p>
                 <p>H3 Resolution (Grid Zoom Level): ${res}</p>
                 <p>Center Coordinates: ${center[0].toFixed(6)}, ${center[1].toFixed(6)}</p>
                 <p>Bounding Box:</p>
@@ -215,20 +215,20 @@
                 </ul>
             `;
 
-            var site = EcoManApp.state.sites.find(site => site.h3index === h3Index);
+            var site = EcoManApp.state.sites.find(site => site.h3index === h3index);
             var highlightColor = site ? '#00ff00' : (res === 9 ? '#ff0000' : '#00ffff');
 
-            map.setFilter('highlighted-hexagon', ['==', 'h3Index', h3Index]);
+            map.setFilter('highlighted-hexagon', ['==', 'h3Index', h3index]);
             map.setPaintProperty('highlighted-hexagon', 'line-color', highlightColor);
 
             if (res === 9) {
-                EcoManApp.state.h3index = h3Index;
+                EcoManApp.state.h3index = h3index;
                 if (site) {
                     updateGenerateButtonState('mint');
-                    document.getElementById('generated-image').src = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
+                    document.getElementById('generated-image').src = site.image_url;
                     document.getElementById('generated-image').style.display = 'block';
                     document.getElementById('site-data').style.display = 'block';
-                    loadSiteData(h3Index); // Load site data and generate plot
+                    loadSiteData(h3index); // Load site data and generate plot
                 } else {
                     updateGenerateButtonState('active');
                     document.getElementById('site-data').style.display = 'none'; // Hide the site-data div if no site is selected
@@ -261,9 +261,10 @@
                         h3id1 = h3.cellToParent(site.h3index, 1).substring(0, 5);
                         h3id5 = h3.cellToParent(site.h3index, 5).substring(0, 8);
                         date = site.timestamp.substring(0, 10).replace(/-/g, '');
-                        pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
-                        console.log(h3id1, h3id5, pid);
-                        site.image_url = `${dataroot}/${h3id1}/${h3id5}/${pid}/${pid}-mandala.png`;
+                        site.pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
+                        site.path = h3id1 + '/' + h3id5 + '/' + site.pid;
+                        //console.log(h3id1, h3id5, pid);
+                        site.image_url = `${dataroot}/${site.path}/${site.pid}-mandala.png`;
                     }
                     else {
                         site.image_url = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
