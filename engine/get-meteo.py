@@ -2,7 +2,10 @@ import os, json, requests, functions_framework, openmeteo_requests
 import importlib, datetime, h3, time, uuid
 from flask import jsonify, make_response
 from types import SimpleNamespace
-
+import requests_cache
+import pandas as pd
+from retry_requests import retry
+from google.cloud import storage
 
 def fetch_meteo(args):
 
@@ -54,19 +57,6 @@ def fetch_meteo(args):
     args.data.daily_data["sunshine_duration"] = daily_sunshine_duration
     args.data.daily_data["precipitation_sum"] = daily_precipitation_sum
 
-    with open('/tmp/meteo.json', 'w') as f:
-        json.dump(args.data.daily_data, f, default=str)
-    gcp_upload_file(args, '/tmp/meteo.json', f'{args.data.gcp_root}/{args.pid}-meteo.json')
-
-def meteo(args):
-    
-    h3id9 = args.pid.split('-')[0]
-    h3id5 = h3.cell_to_parent(h3id9, res=5)[:8]
-    h3id1 = h3.cell_to_parent(h3id9, res=1)[:5]
-    gcp_path = f'{h3id1}/{h3id5}/{args.pid}'
-    url = f'https://storage.googleapis.com/{args.gcp_bucket}/{gcp_path}/{args.pid}-meteo.json'
-    #return {'url': url}
-    return json.loads(args.requests.get(url).text)
 
 @functions_framework.http
 def main(request):
@@ -74,33 +64,28 @@ def main(request):
     args = SimpleNamespace()
     args.request = request
     args.gcp_bucket = 'ecomandala-preprod-9f3489c8-eb24-4d88'
-    lu.init_logdb(args)
+    #lu.init_logdb(args)
 
     params = request.path.split('/')
-    if '-' in params[1]:
-        args.pid = params[1]
-        args.h3index = args.pid.split('-')[0]
-    elif params[1]:
-        args.h3index = param[1]
-    elif 'pid' in request.get_json(silent=True):
-        args.pid = request.get_json(silent=True)['pid']
-        args.h3index = args.pid.split('-')[0]
-    else:
-        args.h3index = request.get_json(silent=True)['h3index']
+    args.pid = params[1] if params[1] else request.get_json(silent=True)['pid']
+    args.h3index = args.pid.split('-')[0]
 
     h3id5 = h3.cell_to_parent(args.h3index, res=5)[:8]
     h3id1 = h3.cell_to_parent(args.h3index, res=1)[:5]
     gcp_path = f'{h3id1}/{h3id5}/{args.pid}'
-    url = f'https://storage.googleapis.com/{args.gcp_bucket}/{gcp_path}/{args.pid}-meteo.json'
-    #return {'url': url}
-    return json.loads(args.requests.get(url).text)
 
-
-    if args.hasattr('pid'):
-        args.h3index = args.pid.split('-')[0]
-        data = meteo(args)
+    client = storage.Client.create_anonymous_client()
+    bucket = client.bucket(args.gcp_bucket)
+    blob = bucket.blob(f'{gcp_path}/{args.pid}-meteo.json')
+    if blob.exists():
+        url = f'https://storage.googleapis.com/{args.gcp_bucket}/{gcp_path}/{args.pid}-meteo.json'
+        data = json.loads(requests.get(url).text)
     else:
-        data = fetch_meteo(args)
+        fetch_meteo(args)
+        with open('/tmp/meteo.json', 'w') as f:
+            json.dump(args.data.daily_data, f, default=str)
+        blob.upload_from_filename('/tmp/meteo.json')
+        data = args.data.daily_data
 
     response = make_response(jsonify(data))
 

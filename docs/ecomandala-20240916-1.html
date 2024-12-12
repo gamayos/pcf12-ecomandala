@@ -156,7 +156,7 @@
 
         async function loadSiteData(h3Index) {
             try {
-                const response = await fetch('https://us-central1-ecomandala.cloudfunctions.net/ecomandala/meteo/8929a1d7577ffff-20241126-0ea1f504');
+                const response = await fetch(`${EcoManApp.config.apiUrl}/getMeteo/891e8ab6c2bffff-20241128-8bb80732`);
                 const data = await response.json();
                 const minTemps = data.temperature_2m_min;
                 const maxTemps = data.temperature_2m_max;
