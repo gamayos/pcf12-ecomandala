@@ -154,9 +154,11 @@
             }
         }
 
-        async function loadSiteData(h3Index) {
+        async function loadSiteData() {
+            const pid = EcoManApp.state.site.pid;
+            console.log('Loading site data for PID:', pid);
             try {
-                const response = await fetch(`${EcoManApp.config.apiUrl}/getMeteo/891e8ab6c2bffff-20241128-8bb80732`);
+                const response = await fetch(`${EcoManApp.config.apiUrl}/getMeteo/${pid}`);
                 const data = await response.json();
                 const minTemps = data.temperature_2m_min;
                 const maxTemps = data.temperature_2m_max;
@@ -193,20 +195,24 @@
             }
         }
 
-        function panToCoordinates(lat, lon, h3index, ipfsUrl) {
-            const res = h3.getResolution(h3index);
+        function panToSite(pid) {
+
+            const site = EcoManApp.state.sites.find(site => site.pid === pid);
+
+            console.log('Pan to coordinates:', site.lat, site.lon);
+            const res = h3.getResolution(site.h3index);
             map.flyTo({
-                center: [lon, lat],
+                center: [site.lon, site.lat],
                 zoom: 15
             });
 
-            var center = h3.cellToLatLng(h3index);
-            var boundingBox = h3.cellToBoundary(h3index, true);
+            var center = h3.cellToLatLng(site.h3index);
+            var boundingBox = h3.cellToBoundary(site.h3index, true);
 
             console.log('Resolution:', res);
 
             document.getElementById('hex-info').innerHTML = `
-                <p>H3 Index: ${h3index}</p>
+                <p>H3 Index: ${site.h3index}</p>
                 <p>H3 Resolution (Grid Zoom Level): ${res}</p>
                 <p>Center Coordinates: ${center[0].toFixed(6)}, ${center[1].toFixed(6)}</p>
                 <p>Bounding Box:</p>
@@ -215,20 +221,20 @@
                 </ul>
             `;
 
-            var site = EcoManApp.state.sites.find(site => site.h3index === h3index);
             var highlightColor = site ? '#00ff00' : (res === 9 ? '#ff0000' : '#00ffff');
 
-            map.setFilter('highlighted-hexagon', ['==', 'h3Index', h3index]);
+            map.setFilter('highlighted-hexagon', ['==', 'h3Index', site.h3index]);
             map.setPaintProperty('highlighted-hexagon', 'line-color', highlightColor);
 
             if (res === 9) {
-                EcoManApp.state.h3index = h3index;
+                EcoManApp.state.h3index = site.h3index;
+                EcoManApp.state.site = site;
                 if (site) {
                     updateGenerateButtonState('mint');
                     document.getElementById('generated-image').src = site.image_url;
                     document.getElementById('generated-image').style.display = 'block';
                     document.getElementById('site-data').style.display = 'block';
-                    loadSiteData(h3index); // Load site data and generate plot
+                    loadSiteData(); // Load site data and generate plot
                 } else {
                     updateGenerateButtonState('active');
                     document.getElementById('site-data').style.display = 'none'; // Hide the site-data div if no site is selected
@@ -236,6 +242,7 @@
             } else {
                 updateGenerateButtonState('inactive');
                 EcoManApp.state.h3index = null;
+                EcoManApp.state.site = null;
                 document.getElementById('site-data').style.display = 'none'; // Hide the site-data div if resolution is not 9
             }
 
@@ -257,11 +264,11 @@
                     const siteContainer = document.createElement('div');
                     siteContainer.className = 'site-container';
                     siteContainer.style.display = 'flex';
+                    date = site.timestamp.substring(0, 10).replace(/-/g, '');
+                    site.pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
                     if (site.ipfs=='') {
                         h3id1 = h3.cellToParent(site.h3index, 1).substring(0, 5);
                         h3id5 = h3.cellToParent(site.h3index, 5).substring(0, 8);
-                        date = site.timestamp.substring(0, 10).replace(/-/g, '');
-                        site.pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
                         site.path = h3id1 + '/' + h3id5 + '/' + site.pid;
                         //console.log(h3id1, h3id5, pid);
                         site.image_url = `${dataroot}/${site.path}/${site.pid}-preview.png`;
@@ -275,7 +282,7 @@
                             <p>H3index: <span>${site.h3index}</span></p>
                             <p>Time-stamp: <span>${site.timestamp}</span></p>
                             <p>Status: <span>${site.status}</span></p>
-                            <p>Coordinates: <a href="#" onclick="panToCoordinates(${site.lat}, ${site.lon}, '${site.h3index}', '${site.ipfs}')">${site.lat}, ${site.lon}</a></p>
+                            <p>Coordinates: <a href="#" onclick="panToSite('${site.pid}')">${site.lat}, ${site.lon}</a></p>
                         </div>
                         <div id="mandala" style="width: 40%;">
                             <img src="${site.image_url}" alt="Site Image" style="width: 100%; height: auto;" />
