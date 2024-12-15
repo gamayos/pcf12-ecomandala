@@ -49,7 +49,7 @@
             background-color: green;
             cursor: not-allowed;
         }
-        #generated-image {
+        #site-image {
             display: none;
             margin-top: 20px;
             width: 100%;
@@ -78,6 +78,31 @@
         .tab-content.active {
             display: block;
         }
+        #site-data {
+            width: 100%;
+            height: 300px;
+        }
+        #hex-info {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            font-family: sans-serif;
+            font-size: 14px;
+        }
+        .site-container {
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            font-family: sans-serif;
+            font-size: 14px;
+        }
+        .site-container.selected {
+            border: 2px solid #00ff00;
+            background-color: #f0f0f0;
+        }
     </style>
 </head>
 <body>
@@ -89,14 +114,12 @@
                 <button class="tab-button" onclick="openTab(event, 'my-sites')">My Sites</button>
             </div>
             <div id="explore" class="tab-content active">
-                <h2>Explore</h2>
                 <div id="hex-info">Click on a hexagon to see its information.</div>
                 <button id="generate-btn" disabled>Generate</button>
-                <img id="generated-image" src="" alt="Generated Content" />
+                <img id="site-image" src="" alt="Generated Content" />
                 <div id="site-data" style="display: none;"></div> <!-- Move site-data div here -->
             </div>
             <div id="my-sites" class="tab-content">
-                <h2>My Sites</h2>
                 <div id="site-list"></div>
             </div>
         </div>
@@ -125,11 +148,14 @@
             document.getElementById(tabName).style.display = "block";
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.className += " active";
+            if (tabName === 'explore') {
+                loadSiteData();
+            }   
         }
 
         function updateGenerateButtonState(state) {
             const generateBtn = document.getElementById('generate-btn');
-            const generatedImage = document.getElementById('generated-image');
+            const generatedImage = document.getElementById('site-image');
             generateBtn.classList.remove('active', 'generating', 'mint');
             generateBtn.disabled = true;
 
@@ -158,40 +184,46 @@
             const pid = EcoManApp.state.site.pid;
             console.log('Loading site data for PID:', pid);
             try {
-                const response = await fetch(`${EcoManApp.config.apiUrl}/getMeteo/${pid}`);
-                const data = await response.json();
-                const minTemps = data.temperature_2m_min;
-                const maxTemps = data.temperature_2m_max;
-                const dates = data.juldate;
-                console.log('Site dates:', dates);
-                //const dates = data.map(entry => entry.date);
-                //const minTemps = data.map(entry => entry.min_temp);
-                //const maxTemps = data.map(entry => entry.max_temp);
+            const response = await fetch(`${EcoManApp.config.apiUrl}/getMeteo/${pid}`);
+            const data = await response.json();
+            const minTemps = data.temperature_2m_min;
+            const maxTemps = data.temperature_2m_max;
+            const dates = data.juldate;
+            console.log('Site dates:', dates);
 
-                const trace1 = {
-                    x: dates,
-                    y: minTemps,
-                    name: 'Min Temperature',
-                    type: 'scatter'
-                };
+            const trace1 = {
+                x: dates,
+                y: minTemps,
+                name: 'Min Temperature',
+                type: 'scatter'
+            };
 
-                const trace2 = {
-                    x: dates,
-                    y: maxTemps,
-                    name: 'Max Temperature',
-                    type: 'scatter'
-                };
+            const trace2 = {
+                x: dates,
+                y: maxTemps,
+                name: 'Max Temperature',
+                type: 'scatter'
+            };
 
-                const layout = {
-                    title: 'Daily Min and Max Temperature',
-                    xaxis: { title: 'Date' },
-                    yaxis: { title: 'Temperature (°C)' }
-                };
+            const layout = {
+                title: {
+                //    text: 'Daily Min and Max Temperature',
+                //   font: { size: 14 },
+                //    y: 1.2
+                },
+                xaxis: { title: { text: '', font: {size: 12} }, showticklabels: false },
+                yaxis: { title: { text: 'Temperature (°C)', font: {size: 12} } },
+                autosize: true,
+                legend: { orientation: 'h', y: 1.1 },
+                margin: { t: 8, l: 34, r: 8 }
+            };
 
-                Plotly.newPlot('site-data', [trace1, trace2], layout);
-                document.getElementById('site-data').style.display = 'block'; // Show the site-data div after plotting
+            const config = { responsive: true, displayModeBar: false };
+
+            Plotly.newPlot('site-data', [trace1, trace2], layout, config);
+            document.getElementById('site-data').style.display = 'block'; // Show the site-data div after plotting
             } catch (error) {
-                console.error('Error loading site data:', error);
+            console.error('Error loading site data:', error);
             }
         }
 
@@ -223,7 +255,7 @@
 
             var highlightColor = site ? '#00ff00' : (res === 9 ? '#ff0000' : '#00ffff');
 
-            map.setFilter('highlighted-hexagon', ['==', 'h3Index', site.h3index]);
+            map.setFilter('highlighted-hexagon', ['==', 'h3index', site.h3index]);
             map.setPaintProperty('highlighted-hexagon', 'line-color', highlightColor);
 
             if (res === 9) {
@@ -231,8 +263,8 @@
                 EcoManApp.state.site = site;
                 if (site) {
                     updateGenerateButtonState('mint');
-                    document.getElementById('generated-image').src = site.image_url;
-                    document.getElementById('generated-image').style.display = 'block';
+                    document.getElementById('site-image').src = site.image_url;
+                    document.getElementById('site-image').style.display = 'block';
                     document.getElementById('site-data').style.display = 'block';
                     loadSiteData(); // Load site data and generate plot
                 } else {
@@ -246,8 +278,23 @@
                 document.getElementById('site-data').style.display = 'none'; // Hide the site-data div if resolution is not 9
             }
 
-            openTab({ currentTarget: document.querySelector('.tab-button[onclick="openTab(event, \'explore\')"]') }, 'explore');
+            // Highlight the selected site in the site list
+            document.querySelectorAll('.site-container').forEach(container => {
+                container.classList.remove('selected');
+            });
+            const selectedContainer = document.querySelector(`.site-container[data-pid="${pid}"]`);
+            if (selectedContainer) {
+                selectedContainer.classList.add('selected');
+            }
+        }
 
+        function previewURL(h3index, uuid, date) {
+            date = date.substring(0, 10).replace(/-/g, '');
+            pid = h3index + '-' + date + '-' + uuid.substring(0, 8);
+            h3id1 = h3.cellToParent(h3index, 1).substring(0, 5);
+            h3id5 = h3.cellToParent(h3index, 5).substring(0, 8);
+            path = h3id1 + '/' + h3id5 + '/' + pid;
+            return `${dataroot}/${path}/${pid}-preview.png`;
         }
 
         // Fetch data from the API and populate the "My Sites" tab
@@ -264,14 +311,12 @@
                     const siteContainer = document.createElement('div');
                     siteContainer.className = 'site-container';
                     siteContainer.style.display = 'flex';
+                    siteContainer.style.cursor = 'pointer';
                     date = site.timestamp.substring(0, 10).replace(/-/g, '');
                     site.pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
+                    siteContainer.setAttribute('data-pid', site.pid); // Add data-pid attribute
                     if (site.ipfs=='') {
-                        h3id1 = h3.cellToParent(site.h3index, 1).substring(0, 5);
-                        h3id5 = h3.cellToParent(site.h3index, 5).substring(0, 8);
-                        site.path = h3id1 + '/' + h3id5 + '/' + site.pid;
-                        //console.log(h3id1, h3id5, pid);
-                        site.image_url = `${dataroot}/${site.path}/${site.pid}-preview.png`;
+                        site.image_url = previewURL(site.h3index, site.uuid, date);
                     }
                     else {
                         site.image_url = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
@@ -279,17 +324,18 @@
                     console.log(site.ipfs);
                     siteContainer.innerHTML = `
                         <div style="width: 60%;">
-                            <p>H3index: <span>${site.h3index}</span></p>
+                            <p>h3index: <span>${site.h3index}</span></p>
                             <p>Time-stamp: <span>${site.timestamp}</span></p>
                             <p>Status: <span>${site.status}</span></p>
-                            <p>Coordinates: <a href="#" onclick="panToSite('${site.pid}')">${site.lat}, ${site.lon}</a></p>
+                            <p>Coordinates: ${site.lat}, ${site.lon}</p>
                         </div>
                         <div id="mandala" style="width: 40%;">
                             <img src="${site.image_url}" alt="Site Image" style="width: 100%; height: auto;" />
                         </div>
                     `;
+                    siteContainer.addEventListener('click', () => panToSite(site.pid));
                     siteList.appendChild(siteContainer);
-                    siteList.appendChild(document.createElement('hr'));
+                    //siteList.appendChild(document.createElement('hr'));
                 });
             } catch (error) {
                 console.error('Error fetching site data:', error);
@@ -321,6 +367,14 @@
                 }
             });
 
+            map.addSource('site-hexagons', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+
             map.addLayer({
                 id: 'hexagons-layer',
                 type: 'fill',
@@ -339,7 +393,30 @@
                 layout: {},
                 paint: {
                     'line-color': '#00ffff',
-                    'line-width': 1 // Increase the line width
+                    'line-width': 1
+                }
+            });
+            
+            map.addLayer({
+                id: 'site-hexagons-layer',
+                type: 'fill',
+                source: 'site-hexagons',
+                layout: {},
+                paint: {
+                    'fill-color': 'transparent',
+                    'fill-outline-color': '#00ff00'
+                }
+            });
+            
+            map.addLayer({
+                id: 'site-hexagons-outline',
+                type: 'line',
+                source: 'site-hexagons',
+                layout: {
+                },
+                paint: {
+                    'line-color': '#00ff00',
+                    'line-width': 1
                 }
             });
 
@@ -352,7 +429,7 @@
                     'line-color': '#ff0000',
                     'line-width': 3
                 },
-                filter: ['==', 'h3Index', '']
+                filter: ['==', 'h3index', '']
             });
 
             generateHexagons();
@@ -365,18 +442,28 @@
         });
 
         map.on('click', 'hexagons-layer', function(e) {
+            //console.log('Hexagon clicked');
+            handleHexagonClick(e, 'hexagons-layer');
+        });
+
+        map.on('click', 'site-hexagons-layer', function(e) {
+            //console.log('Site hexagon clicked');
+            handleHexagonClick(e, 'site-hexagons-layer');
+        });
+
+        function handleHexagonClick(e, layerId) {
             var features = map.queryRenderedFeatures(e.point, {
-                layers: ['hexagons-layer']
+                layers: [layerId]
             });
 
             if (features.length) {
                 var feature = features[0];
-                var h3Index = feature.properties.h3Index;
-                var center = h3.cellToLatLng(h3Index);
-                var boundingBox = h3.cellToBoundary(h3Index, true);
+                var h3index = feature.properties.h3index;
+                var center = h3.cellToLatLng(h3index);
+                var boundingBox = h3.cellToBoundary(h3index, true);
 
                 document.getElementById('hex-info').innerHTML = `
-                    <p>H3 Index: ${h3Index}</p>
+                    <p>H3 Index: ${h3index}</p>
                     <p>H3 Resolution (Grid Zoom Level): ${resolution}</p>
                     <p>Center Coordinates: ${center[0].toFixed(6)}, ${center[1].toFixed(6)}</p>
                     <p>Bounding Box:</p>
@@ -385,34 +472,49 @@
                     </ul>
                 `;
 
-                var site = EcoManApp.state.sites.find(site => site.h3index === h3Index);
+                var site = EcoManApp.state.sites.find(site => site.h3index === h3index);
                 var highlightColor = site ? '#00ff00' : (resolution === 9 ? '#ff0000' : '#00ffff');
 
-                map.setFilter('highlighted-hexagon', ['==', 'h3Index', h3Index]);
+                map.setFilter('highlighted-hexagon', ['==', 'h3index', h3index]);
                 map.setPaintProperty('highlighted-hexagon', 'line-color', highlightColor);
+                //map.setPaintProperty('highlighted-hexagon', 'line-width', 3);
 
                 if (resolution === 9) {
-                    EcoManApp.state.h3index = h3Index;
+                    EcoManApp.state.h3index = h3index;
                     if (site) {
                         updateGenerateButtonState('mint');
-                        document.getElementById('generated-image').src = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
-                        document.getElementById('generated-image').style.display = 'block';
+                        document.getElementById('site-image').src = site.image_url;
+                        document.getElementById('site-image').style.display = 'block';
+                        document.getElementById('site-data').style.display = 'block';
                     } else {
                         updateGenerateButtonState('active');
+                        document.getElementById('site-image').style.display = 'none';
+                        document.getElementById('site-data').style.display = 'none';
                     }
                 } else {
                     updateGenerateButtonState('inactive');
                     EcoManApp.state.h3index = null;
                 }
+
+                // Highlight the corresponding site container or unhighlight if non-listed hexagon
+                document.querySelectorAll('.site-container').forEach(container => {
+                    container.classList.remove('selected');
+                });
+                if (site) {
+                    const selectedContainer = document.querySelector(`.site-container[data-pid="${site.pid}"]`);
+                    if (selectedContainer) {
+                        selectedContainer.classList.add('selected');
+                    }
+                }
             }
-        });
+        }
 
         document.getElementById('generate-btn').addEventListener('click', async function() {
             if (EcoManApp.state.h3index) {
                 updateGenerateButtonState('generating');
                 // Display the placeholder image immediately
-                document.getElementById('generated-image').src = 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88/assets/placeholder1.png';
-                document.getElementById('generated-image').style.display = 'block';
+                document.getElementById('site-image').src = 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88/assets/placeholder1.png';
+                document.getElementById('site-image').style.display = 'block';
 
                 try {
                     const response = await fetch(`${EcoManApp.config.apiUrl}/addSite/12345678/${EcoManApp.state.h3index}`, {
@@ -421,7 +523,7 @@
                     const result = await response.json();
                     console.log('Generation result:', result);
                     // Replace the placeholder image with the generated image
-                    document.getElementById('generated-image').src = `https://c-ipfs-gw.nmkr.io/ipfs/${result.IPFS}`;
+                    document.getElementById('site-image').src = previewURL(result['H3-ID'], result['UUID'], result['Timestamp-start']);
                     updateGenerateButtonState('mint');
                     // Reload and regenerate the content of the "My Sites" list
                     loadMySites();
@@ -450,33 +552,50 @@
 
             var hexagons = h3.polygonToCells(polygon, resolution);
 
-            // Now create GeoJSON features for these hexagons
-            var features = hexagons.map(function(h3Index) {
-                var coordinates = [h3.cellToBoundary(h3Index, true)];
-                var color = (resolution === 9 && EcoManApp.state.sites.some(site => site.h3index === h3Index)) ? '#00ff00' : '#00ffff'; // Green if in site list and zoom level is 9, else cyan
-                return {
+            // Separate hexagons into two arrays: one for listed sites and one for others
+            var siteHexagons = [];
+            var otherHexagons = [];
+
+            hexagons.forEach(function(h3index) {
+                var coordinates = [h3.cellToBoundary(h3index, true)];
+                var color = (resolution === 9 && EcoManApp.state.sites.some(site => site.h3index === h3index)) ? '#00ff00' : '#00ffff'; // Green if in site list and zoom level is 9, else cyan
+                var feature = {
                     type: 'Feature',
                     geometry: {
                         type: 'Polygon',
                         coordinates: coordinates
                     },
                     properties: {
-                        h3Index: h3Index,
+                        h3index: h3index,
                         color: color
                     }
                 };
+                if (color === '#00ff00') {
+                    siteHexagons.push(feature);
+                    otherHexagons.push(feature);
+                } else {
+                    otherHexagons.push(feature);
+                }
             });
 
             // Add the hexagons to the map
             if (map.getSource('hexagons')) {
                 map.getSource('hexagons').setData({
                     type: 'FeatureCollection',
-                    features: features
+                    features: otherHexagons
+                });
+            }
+
+            if (map.getSource('site-hexagons')) {
+                map.getSource('site-hexagons').setData({
+                    type: 'FeatureCollection',
+                    features: siteHexagons
                 });
             }
 
             // Update the hexagon outlines
             map.setPaintProperty('hexagons-outline', 'line-color', ['get', 'color']);
+            map.setPaintProperty('site-hexagons-outline', 'line-color', ['get', 'color']);
         }
     </script>
     <!-- Include Mapbox GL JS -->
