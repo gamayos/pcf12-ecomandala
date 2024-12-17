@@ -83,6 +83,7 @@
             height: 300px;
         }
         #hex-info {
+            display: none; /* Hide hex-info initially */
             margin-top: 20px;
             padding: 10px;
             background-color: #f9f9f9;
@@ -106,6 +107,21 @@
             border: 2px solid #00ff00;
             background-color: #f0f0f0;
         }
+        .mint-button {
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 2px;
+            cursor: pointer;
+            height: 26px;
+            width: 80px;
+            font-size: 14px;
+            display: flex;
+            vertical-align: middle;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
@@ -113,17 +129,17 @@
         <div id="map"></div>
         <div id="info">
             <div id="tabs">
-                <button class="tab-button active" onclick="openTab(event, 'explore')">Explore</button>
-                <button class="tab-button" onclick="openTab(event, 'my-sites')">My Sites</button>
+                <button class="tab-button active" onclick="openTab(event, 'my-sites')">My Sites</button>
+                <button class="tab-button" onclick="openTab(event, 'explore')">Explore</button>
             </div>
-            <div id="explore" class="tab-content active">
-                <div id="hex-info">Click on a hexagon to see its information.</div>
-                <button id="generate-btn" disabled>Generate</button>
+            <div id="my-sites" class="tab-content active">
+                <div id="site-list"></div>
+            </div>
+            <div id="explore" class="tab-content">
+                <div id="hex-info" style="display: none;">Click on a hexagon to see its information.</div>
+                <button id="generate-btn" disabled style="display: none;">Generate</button>
                 <img id="site-image" src="" alt="Generated Content" />
                 <div id="site-data" style="display: none;"></div> <!-- Move site-data div here -->
-            </div>
-            <div id="my-sites" class="tab-content">
-                <div id="site-list"></div>
             </div>
         </div>
     </div>
@@ -136,7 +152,6 @@
 	    "pk.eyJ1IjoiZ2lyaXNocGFsbGFnYXR0aSIsImEiOiJja2h6NGVuc20wYndjMnlxaDExbzlsa3B2In0.e94ZfcoPleAA2nqjeX10ag";
     </script>
     <script>
-        const dataroot = 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88';
         function openTab(evt, tabName) {
             var i, tabcontent, tabbuttons;
             tabcontent = document.getElementsByClassName("tab-content");
@@ -153,6 +168,13 @@
             evt.currentTarget.className += " active";
             if (tabName === 'explore') {
                 loadSiteData();
+                document.getElementById('hex-info').style.display = 'block'; // Show hex-info when Explore tab is clicked
+                document.getElementById('generate-btn').style.display = 'block';
+                //document.getElementById('site-data').style.display = 'block';
+            } else {
+                document.getElementById('hex-info').style.display = 'none'; // Hide hex-info when other tabs are clicked
+                document.getElementById('generate-btn').style.display = 'none';
+                document.getElementById('site-data').style.display = 'none';
             }   
         }
 
@@ -184,6 +206,7 @@
         }
 
         async function loadSiteData() {
+            if (!EcoManApp.state.site) return;
             const pid = EcoManApp.state.site.pid;
             console.log('Loading site data for PID:', pid);
             try {
@@ -192,7 +215,7 @@
             const minTemps = data.temperature_2m_min;
             const maxTemps = data.temperature_2m_max;
             const dates = data.juldate;
-            console.log('Site dates:', dates);
+            //console.log('Site dates:', dates);
 
             const trace1 = {
                 x: dates,
@@ -297,14 +320,14 @@
             h3id1 = h3.cellToParent(h3index, 1).substring(0, 5);
             h3id5 = h3.cellToParent(h3index, 5).substring(0, 8);
             path = h3id1 + '/' + h3id5 + '/' + pid;
-            return `${dataroot}/${path}/${pid}-preview.png`;
+            return `${EcoManApp.dataroot}/${path}/${pid}-preview.png`;
         }
 
         // Fetch data from the API and populate the "My Sites" tab
         async function loadMySites() {
             try {
                 const response = await fetch(`${EcoManApp.config.apiUrl}/listSites/12345678/14`);
-                const data = await response.json();
+                const data = (await response.json()).reverse();
                 const siteList = document.getElementById('site-list');
                 siteList.innerHTML = ''; // Clear any existing content
 
@@ -345,6 +368,7 @@
                                         <img src="cexplorer.png" style="height: 100%;" />
                                     </a>
                                 </div>
+                                <button class="mint-button" style="display: ${site.state === 'free' ? 'block' : 'none'};" onclick="mintNFT('${site.uuid}')">Mint</button>
                             </div>
                         </div>
                         <div id="mandala" style="width: 40%;">
@@ -357,6 +381,22 @@
                 });
             } catch (error) {
                 console.error('Error fetching site data:', error);
+            }
+        }
+
+        async function mintNFT(uuid) {
+            //console.log('Minting NFT:', uuid);
+            //return;
+            try {
+                const response = await fetch(`${EcoManApp.config.apiUrl}/mintNFT/${uuid}`, { method: 'GET' });
+                const result = await response.json();
+                console.log('Minting successful for: ', uuid);
+                //alert('NFT minted successfully!');
+                loadMySites(); // Reload the "My Sites" list after minting
+            } catch (error) {
+                console.log('Error minting NFT:', uuid);
+                console.error('Error minting NFT:', error);
+                //alert('Failed to mint NFT.');
             }
         }
 
@@ -500,17 +540,20 @@
                 if (resolution === 9) {
                     EcoManApp.state.h3index = h3index;
                     if (site) {
+                        EcoManApp.state.site = site;
                         updateGenerateButtonState('mint');
                         document.getElementById('site-image').src = site.image_url;
                         document.getElementById('site-image').style.display = 'block';
                         document.getElementById('site-data').style.display = 'block';
                     } else {
+                        EcoManApp.state.site = null;
                         updateGenerateButtonState('active');
                         document.getElementById('site-image').style.display = 'none';
                         document.getElementById('site-data').style.display = 'none';
                     }
                 } else {
                     updateGenerateButtonState('inactive');
+                    EcoManApp.state.site = null;
                     EcoManApp.state.h3index = null;
                 }
 
@@ -626,6 +669,7 @@
     </script>
     <script>
         const EcoManApp = {
+            dataroot: 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88',
             config: {
                 apiUrl: "https://us-central1-ecomandala.cloudfunctions.net",
                 theme: "dark"
