@@ -152,6 +152,16 @@
 	    "pk.eyJ1IjoiZ2lyaXNocGFsbGFnYXR0aSIsImEiOiJja2h6NGVuc20wYndjMnlxaDExbzlsa3B2In0.e94ZfcoPleAA2nqjeX10ag";
     </script>
     <script>
+        const EcoManApp = {
+            dataroot: 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88',
+            config: {
+                apiUrl: "https://us-central1-ecomandala.cloudfunctions.net",
+                theme: "dark"
+            },
+            state: {
+                h3index: null
+            }
+        };
         function openTab(evt, tabName) {
             var i, tabcontent, tabbuttons;
             tabcontent = document.getElementsByClassName("tab-content");
@@ -314,13 +324,14 @@
             }
         }
 
-        function previewURL(h3index, uuid, date) {
-            date = date.substring(0, 10).replace(/-/g, '');
-            pid = h3index + '-' + date + '-' + uuid.substring(0, 8);
-            h3id1 = h3.cellToParent(h3index, 1).substring(0, 5);
-            h3id5 = h3.cellToParent(h3index, 5).substring(0, 8);
+        function previewURL(site) {
+            date = site.timestamp.substring(0, 10).replace(/-/g, '');
+            pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
+            h3id1 = h3.cellToParent(site.h3index, 1).substring(0, 5);
+            h3id5 = h3.cellToParent(site.h3index, 5).substring(0, 8);
             path = h3id1 + '/' + h3id5 + '/' + pid;
-            return `${EcoManApp.dataroot}/${path}/${pid}-preview.png`;
+            site.preview = `${EcoManApp.dataroot}/${path}/${pid}-preview.png`;
+            site.metadata = `${EcoManApp.dataroot}/${path}/${pid}-meteo.json`;
         }
 
         // Fetch data from the API and populate the "My Sites" tab
@@ -332,7 +343,7 @@
                 siteList.innerHTML = ''; // Clear any existing content
 
                 EcoManApp.state.sites = data; // Store the site data in the state
-
+                dataroot = 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88'
                 data.forEach(site => {
                     const siteContainer = document.createElement('div');
                     siteContainer.className = 'site-container';
@@ -342,13 +353,14 @@
                     site.pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
                     site.reserved = ((site.state === 'reserved') || (site.state === 'sold')) ? true : false;
                     siteContainer.setAttribute('data-pid', site.pid); // Add data-pid attribute
+                    previewURL(site);
                     if (site.ipfs=='') {
-                        site.image_url = previewURL(site.h3index, site.uuid, date);
+                        site.image_url = site.preview;
                     }
                     else {
                         site.image_url = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
                     }
-                    console.log(site.ipfs);
+                    //console.log(site.ipfs);
                     siteContainer.innerHTML = `
                         <div style="width: 60%; display: flex; flex-direction: column; justify-content: space-between;">
                             <div>
@@ -358,6 +370,11 @@
                                 <p>Coordinates: ${site.lat},${site.lon}</p>
                             </div>
                             <div class="status" style="display: flex; align-items: flex-end;">
+                                <div class="ada" style="display: block; height: 26px; margin-right: 10px;">
+                                    <a href="${site.metadata}" target="_blank">
+                                        <img src="assets/fingerprint.png" style="height: 100%;" />
+                                    </a>
+                                </div>
                                 <div class="ada" style="display: ${site.reserved ? 'block' : 'none'}; height: 26px;">
                                     <a href="https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}" target="_blank">
                                         <img src="https://studio.preprod.nmkr.io/images/crypto/ada.svg" style="height: 100%;" />
@@ -365,7 +382,7 @@
                                 </div>
                                 <div class="cexplorer" style="display: ${site.state === 'sold' ? 'block' : 'none'}; height: 26px; margin-left: 10px;">
                                     <a href="https://preprod.cexplorer.io/asset/${site.assetId}" target="_blank">
-                                        <img src="cexplorer.png" style="height: 100%;" />
+                                        <img src="assets/cexplorer.png" style="height: 100%;" />
                                     </a>
                                 </div>
                                 <button class="mint-button" style="display: ${site.state === 'free' ? 'block' : 'none'};" onclick="mintNFT('${site.uuid}')">Mint</button>
@@ -576,7 +593,7 @@
             if (EcoManApp.state.h3index) {
                 updateGenerateButtonState('generating');
                 // Display the placeholder image immediately
-                document.getElementById('site-image').src = 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88/assets/placeholder1.png';
+                document.getElementById('site-image').src = `${EcoMapApp.dataroot}/assets/placeholder1.png`;
                 document.getElementById('site-image').style.display = 'block';
 
                 try {
@@ -661,26 +678,7 @@
             map.setPaintProperty('site-hexagons-outline', 'line-color', ['get', 'color']);
         }
     </script>
-    <!-- Include Mapbox GL JS -->
-    <script src='https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js'></script>
-    <!-- Add your own Mapbox access token -->
-    <script>
-        //mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN'; // Replace with your Mapbox access token
-          mapboxgl.accessToken =
-        "pk.eyJ1IjoiZ2lyaXNocGFsbGFnYXR0aSIsImEiOiJja2h6NGVuc20wYndjMnlxaDExbzlsa3B2In0.e94ZfcoPleAA2nqjeX10ag";
-    </script>
-    <script>
-        const EcoManApp = {
-            dataroot: 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88',
-            config: {
-                apiUrl: "https://us-central1-ecomandala.cloudfunctions.net",
-                theme: "dark"
-            },
-            state: {
-                h3index: null
-            }
-        };
-    </script>
+    
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </body>
 </html>
