@@ -332,6 +332,7 @@
             path = h3id1 + '/' + h3id5 + '/' + pid;
             site.preview = `${EcoManApp.dataroot}/${path}/${pid}-preview.png`;
             site.metadata = `${EcoManApp.dataroot}/${path}/${pid}-meteo.json`;
+            return site.preview;
         }
 
         // Fetch data from the API and populate the "My Sites" tab
@@ -353,9 +354,8 @@
                     site.pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
                     site.reserved = ((site.state === 'reserved') || (site.state === 'sold')) ? true : false;
                     siteContainer.setAttribute('data-pid', site.pid); // Add data-pid attribute
-                    previewURL(site);
                     if (site.ipfs=='') {
-                        site.image_url = site.preview;
+                        site.image_url = previewURL(site);
                     }
                     else {
                         site.image_url = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
@@ -366,8 +366,8 @@
                             <div>
                                 <p>Created: <span>${site.timestamp}</span></p>
                                 <p>H3: <span>${site.h3index}</span></p>
-                                <p>State: <span>${site.state}</span></p>
                                 <p>Coordinates: ${site.lat},${site.lon}</p>
+                                <p>State: <span>${site.state}</span></p>
                             </div>
                             <div class="status" style="display: flex; align-items: flex-end;">
                                 <div class="ada" style="display: block; height: 26px; margin-right: 10px;">
@@ -593,17 +593,18 @@
             if (EcoManApp.state.h3index) {
                 updateGenerateButtonState('generating');
                 // Display the placeholder image immediately
-                document.getElementById('site-image').src = `${EcoMapApp.dataroot}/assets/placeholder1.png`;
+                document.getElementById('site-image').src = "assets/placeholder1.png";
                 document.getElementById('site-image').style.display = 'block';
 
                 try {
                     const response = await fetch(`${EcoManApp.config.apiUrl}/addSite/12345678/${EcoManApp.state.h3index}`, {
-                        method: 'POST'
+                        method: 'GET'
                     });
                     const result = await response.json();
                     console.log('Generation result:', result);
                     // Replace the placeholder image with the generated image
-                    document.getElementById('site-image').src = previewURL(result['H3-ID'], result['UUID'], result['Timestamp-start']);
+                    EcoManApp.state.site = {'h3index': result['H3-ID'], 'uuid': result['UUID'], 'timestamp': result['Timestamp-start']}
+                    document.getElementById('site-image').src = previewURL(EcoManApp.state.site);
                     updateGenerateButtonState('mint');
                     // Reload and regenerate the content of the "My Sites" list
                     loadMySites();
