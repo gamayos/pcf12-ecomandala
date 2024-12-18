@@ -421,6 +421,9 @@
         document.addEventListener("DOMContentLoaded", function() {
             document.getElementById("explore").style.display = "block";
             loadMySites(); // Load the "My Sites" data when the page loads
+
+            // Set an interval to reload "My Sites" every two minutes
+            setInterval(loadMySites, 120000); // 120000 milliseconds = 2 minutes
         });
 
         var map = new mapboxgl.Map({
