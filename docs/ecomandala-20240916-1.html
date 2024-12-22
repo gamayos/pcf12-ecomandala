@@ -334,7 +334,7 @@
             h3id5 = h3.cellToParent(site.h3index, 5).substring(0, 8);
             path = h3id1 + '/' + h3id5 + '/' + pid;
             site.preview = `${EcoManApp.dataroot}/${path}/${pid}-preview.png`;
-            site.metadata = `${EcoManApp.dataroot}/${path}/${pid}-meteo.json`;
+            site.metadata = `${EcoManApp.dataroot}/${path}/${pid}-metadata.json`;
             return site.preview;
         }
 
@@ -357,13 +357,10 @@
                     site.pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
                     site.reserved = ((site.state === 'reserved') || (site.state === 'sold')) ? true : false;
                     siteContainer.setAttribute('data-pid', site.pid); // Add data-pid attribute
-                    if (site.ipfs=='') {
-                        site.image_url = previewURL(site);
-                    }
-                    else {
-                        site.image_url = `https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`;
-                    }
-                    //console.log(site.ipfs);
+                    previewURL(site);
+                    if (site.ipfs) site.image_url=`https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`; 
+                    else site.image_url = site.preview;
+                    //console.log(site.preview, site.image_url);
                     siteContainer.innerHTML = `
                         <div style="width: 60%; display: flex; flex-direction: column; justify-content: space-between;">
                             <div>
