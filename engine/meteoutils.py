@@ -6,6 +6,7 @@ import requests_cache
 import pandas as pd
 from retry_requests import retry
 from google.cloud import storage
+import numpy as np
 
 def fetch_meteo(args):
 
@@ -52,10 +53,15 @@ def fetch_meteo(args):
         inclusive="left"
     )}
     args.data.daily_data['juldate'] = [d for d in args.data.daily_data['date'].to_julian_date().astype(int)]
-    args.data.daily_data["temperature_2m_max"] = [float(t) for t in daily_temperature_2m_max]
-    args.data.daily_data["temperature_2m_min"] = [float(t) for t in daily_temperature_2m_min]
-    args.data.daily_data["sunshine_duration"] = daily_sunshine_duration
-    args.data.daily_data["precipitation_sum"] = daily_precipitation_sum
+    
+    daily_sunshine_duration = pd.Series(daily_sunshine_duration).ffill().to_numpy()
+    daily_precipitation_sum = pd.Series(daily_precipitation_sum).ffill().to_numpy()
+    daily_temperature_2m_max = pd.Series(daily_temperature_2m_max).ffill().to_numpy()
+    daily_temperature_2m_min = pd.Series(daily_temperature_2m_min).ffill().to_numpy()
+    args.data.daily_data["temperatureMax"] = [round(float(t), 2) for t in daily_temperature_2m_max]
+    args.data.daily_data["temperatureMin"] = [round(float(t), 2) for t in daily_temperature_2m_min]
+    args.data.daily_data["sunshineDuration"] = [round(float(t/60)) for t in daily_sunshine_duration]
+    args.data.daily_data["precipitationSum"] = [round(float(t), 2) for t in daily_precipitation_sum]
 
 
 @functions_framework.http
