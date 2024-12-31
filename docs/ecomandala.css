@@ -136,6 +136,7 @@ body { margin:0; padding:0; }
 }
 .project-name a img {
     height: 16px;
+    margin-top: 3px;
     margin-left: 4px;
     vertical-align: top;
 }
