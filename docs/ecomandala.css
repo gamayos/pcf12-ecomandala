@@ -1,0 +1,210 @@
+body { margin:0; padding:0; }
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 20px;
+    background-color: #333;
+    color: white;
+    font-family: sans-serif;
+}
+.header .logo {
+    display: flex;
+    align-items: center;
+}
+.header .logo img {
+    height: 40px;
+    margin-right: 10px;
+}
+.header .links a {
+    color: white;
+    margin-left: 20px;
+    text-decoration: none;
+}
+#container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+#map {
+    width: 70%;
+    height: 100%;
+}
+#info {
+    width: 30%;
+    height: 100%;
+    padding: 10px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    border-left: 1px solid #ccc;
+}
+#generate-btn {
+    background-color: grey;
+    color: white;
+    padding: 10px;
+    border: none;
+    margin-top: 20px;
+    width: 100%;
+    font-size: 16px;
+    cursor: not-allowed;
+}
+#generate-btn.active {
+    background-color: red;
+    cursor: pointer;
+}
+#generate-btn.generating {
+    background-color: amber;
+    cursor: not-allowed;
+}
+#generate-btn.mint {
+    background-color: green;
+    cursor: not-allowed;
+}
+#site-image {
+    display: none;
+    margin-top: 20px;
+    width: 100%;
+    height: auto;
+}
+#tabs {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 10px;
+    position: static;
+}
+.tab-button {
+    background-color: grey;
+    color: white;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+}
+.tab-button.active {
+    background-color: red;
+}
+.tab-content {
+    display: none;
+    overflow-y: auto;
+    height: calc(100vh - 60px);
+}
+.tab-content.active {
+    display: block;
+}
+#site-data {
+    width: 100%;
+    height: 300px;
+}
+#hex-info {
+    display: none; /* Hide hex-info initially */
+    margin-bottom: 20px;
+    /*padding: 10px;*/
+    background-color: #f9f9f9;
+    /*border: 1px solid #ccc;*/
+    font-family: sans-serif;
+    font-size: 14px;
+    line-height: 1.2;
+}
+#hex-info p {
+    margin: 5px 0;
+}
+.project-container {
+    /*padding: 5px;*/
+    margin-bottom: 20px;
+    background-color: #f9f9f9;
+    /*border: 1px solid #ccc;*/
+    font-family: sans-serif;
+    font-size: 14px;
+    line-height: 1.2; /* Reduce line spacing */
+}
+.project-container p {
+    margin: 8px 0;
+}
+.project-container.selected {
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+}
+.project-info {
+    margin-bottom: 10px;
+}
+.project-name span {
+    margin: 5px 0;
+    font-weight: bold;
+    font-size: 18px;
+    color: #333;
+}
+.project-name a img {
+    height: 16px;
+    margin-left: 4px;
+    vertical-align: top;
+}
+.site-list {
+    width: 100%;
+    /* overflow-y: auto; */
+    /* height: calc(100vh - 60px); */
+}
+.site-container {
+    padding: 5px;
+    background-color: #f9f9f9;
+    border-bottom: 1px solid #ccc;
+    font-family: sans-serif;
+    font-size: 14px;
+    line-height: 1.0; /* Reduce line spacing */
+    width: 98%;
+}
+.site-container p {
+    margin: 5px 0;
+}
+.site-container.selected {
+    background-color: #cdc;
+}
+.mint-button {
+    background-color: green;
+    color: white;
+    border: none;
+    border-radius: 14px;
+    padding: 2px;
+    cursor: pointer;
+    height: 26px;
+    width: 80px;
+    font-size: 14px;
+    display: flex;
+    vertical-align: middle;
+    align-items: center;
+    justify-content: center;
+}
+#new-hex {
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+#new-project label {
+    display: block;
+    margin-bottom: 5px;
+    font-family: sans-serif;
+    font-size: 14px;
+}
+#new-project input[type="text"],
+#new-project textarea {
+    width: 100%;
+    padding: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+    font-family: sans-serif;
+    font-size: 14px;
+}
+#new-project-btn {
+    background-color: grey;
+    color: white;
+    padding: 10px;
+    border: none;
+    width: 100%;
+    font-size: 16px;
+    cursor: pointer;
+}
+#new-project-btn:hover {
+    background-color: red;
+}
