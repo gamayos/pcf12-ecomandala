@@ -182,37 +182,63 @@
             });
         }
 
-        function panToSite(h3index) {
-            console.log('Pan to H3:', h3index);
+        function selectSite(h3index) {
             const site = EcoManApp.state.sites.find(site => site.h3index === h3index);
-
-            console.log('Pan to coordinates:', site.lat, site.lon);
-            const res = h3.getResolution(site.h3index);
-            map.flyTo({
-                center: [site.lon, site.lat],
-                zoom: 15
-            });
-
             var center = h3.cellToLatLng(site.h3index);
-            var boundingBox = h3.cellToBoundary(site.h3index, true);
-
-            console.log('Resolution:', res);
+            //var boundingBox = h3.cellToBoundary(site.h3index, true);
+            const resolution = h3.getResolution(h3index);
+            console.log('Resolution:', resolution);
 
             document.getElementById('hex-info').innerHTML = `
                 <p>H3 Index: ${site.h3index}</p>
-                <p>H3 Resolution (Grid Zoom Level): ${res}</p>
-                <p>Center Coordinates: ${center[0].toFixed(6)}, ${center[1].toFixed(6)}</p>
-                <p>Bounding BBox:</p>
-                <ul>
-                    ${boundingBox.map(coord => `<li>${coord[0].toFixed(6)}, ${coord[1].toFixed(6)}</li>`).join('')}
-                </ul>
+                <p>H3 Resolution (Grid Zoom Level): ${resolution}</p>
+                <p>Center Coordinates: ${center[0].toFixed(4)}, ${center[1].toFixed(4)}</p>
             `;
 
-            var highlightColor = site ? '#00ff00' : (res === 9 ? '#ff0000' : '#00ffff');
+            if (resolution===9) {
+                hex_in_sites = EcoManApp.state.sites.some(site => site.h3index === h3index);
+                new_project = (hex_in_sites) ? false : true;
+            } else if (resolution>6) {
+                hex_in_sites = EcoManApp.state.sites.some(site => site.h3index === h3.cellToChildren(h3index,9)[0]);
+                new_project = (hex_in_sites) ? false : true;
+            } else {
+                hex_in_sites = false;
+                new_project = false;
+            }
+            //var color = (resolution === 9 && EcoManApp.state.sites.some(site => site.h3index === h3index)) ? '#00ff00' : '#00ffff'; // Green if in site list and zoom level is 9, else cyan
+            var highlightColor = (hex_in_sites) ? '#00ff00' : ((new_project) ? '#ff0000' : '#00ffff');
+
+            //var highlightColor = site ? '#00ff00' : (res === 9 ? '#ff0000' : '#00ffff');
 
             map.setFilter('highlighted-hexagon', ['==', 'h3index', site.h3index]);
             map.setPaintProperty('highlighted-hexagon', 'line-color', highlightColor);
 
+            // Highlight the selected site in the site list
+            document.querySelectorAll('.site-container').forEach(container => {
+                container.classList.remove('selected');
+            });
+            const selectedContainer = document.querySelector(`.site-container[h3index="${site.h3index}"]`);
+            if (selectedContainer) {
+                selectedContainer.classList.add('selected');
+                selectedContainer.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        }
+
+        function panToSite(h3index) {
+            console.log('Pan to H3:', h3index);
+            
+            var center = h3.cellToLatLng(h3index);
+
+            console.log('Pan to coordinates:', center[0], center[1]);
+            //const res = h3.getResolution(h3index);
+            map.flyTo({
+                center: [center[1], center[0]],
+                zoom: 15
+            });
+
+            selectSite(h3index);
+
+            /*
             if (res === 9) {
                 EcoManApp.state.h3index = site.h3index;
                 EcoManApp.state.site = site;
@@ -232,16 +258,7 @@
                 EcoManApp.state.site = null;
                 document.getElementById('site-data').style.display = 'none'; // Hide the site-data div if resolution is not 9
             }
-
-            // Highlight the selected site in the site list
-            document.querySelectorAll('.site-container').forEach(container => {
-                container.classList.remove('selected');
-            });
-            const selectedContainer = document.querySelector(`.site-container[h3index="${site.h3index}"]`);
-            if (selectedContainer) {
-                selectedContainer.classList.add('selected');
-                selectedContainer.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            }
+            */
         }
 
         function previewURL(site) {
@@ -331,7 +348,7 @@
                 console.log('Loading sites for project:', pid);
                 upid = pid.split('-')[2];
                 const response = await fetch(`${EcoManApp.config.apiUrl}/listProjectSites/u28f61076/${upid}/0`);
-                const data = (await response.json()).reverse();
+                const data = (await response.json()); //.reverse();
                 const siteList = document.getElementById(pid);
                 siteList.innerHTML = ''; // Clear any existing content
 
@@ -352,7 +369,7 @@
                     site.reserved = ((site.state === 'reserved') || (site.state === 'sold')) ? true : false;
                     siteContainer.setAttribute('h3index', site.h3index); // Add h3index attribute
                     previewURL(site);
-                    if (site.ipfs) site.image_url=`https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}`; 
+                    if (site.iPFS) site.image_url=`https://c-ipfs-gw.nmkr.io/ipfs/${site.iPFS}`; 
                     else site.image_url = 'assets/placeholder2.png'; //site.preview;
                     //console.log(site.preview, site.image_url);
                     siteContainer.innerHTML = `
@@ -370,16 +387,16 @@
                                     </a>
                                 </div>
                                 <div class="ada" style="display: ${site.reserved ? 'block' : 'none'}; height: 26px;">
-                                    <a href="https://c-ipfs-gw.nmkr.io/ipfs/${site.ipfs}" target="_blank">
+                                    <a href="https://c-ipfs-gw.nmkr.io/ipfs/${site.iPFS}" target="_blank">
                                         <img src="https://studio.preprod.nmkr.io/images/crypto/ada.svg" style="height: 100%;" />
                                     </a>
                                 </div>
-                                <div class="cexplorer" style="display: ${site.assetId ? 'block' : 'none'}; height: 26px; margin-left: 10px;">
-                                    <a href="https://preprod.cexplorer.io/asset/${site.assetId}" target="_blank">
+                                <div class="cexplorer" style="display: ${site.assetID ? 'block' : 'none'}; height: 26px; margin-left: 10px;">
+                                    <a href="https://preprod.cexplorer.io/asset/${site.assetID}" target="_blank">
                                         <img src="assets/cexplorer.png" style="height: 100%;" />
                                     </a>
                                 </div>
-                                <button class="mint-button" style="display: ${site.state === 'free' ? 'block' : 'none'};" onclick="mintNFT('${site.uuid}')">Mint</button>
+                                <button class="mint-button" style="display: ${site.state === 'free' ? 'block' : 'none'};" onclick="mintNFT('${site.sID}')">Mint</button>
                             </div>
                         </div>
                         <div class="mandala" style="width: 30%;">
@@ -485,26 +502,25 @@
                 id: 'site-hexagons-outline',
                 type: 'line',
                 source: 'site-hexagons',
-                layout: {
-                },
+                layout: {},
                 paint: {
                     'line-color': '#00ff00',
                     'line-width': 1
                 }
             });
-
+            
             map.addLayer({
                 id: 'highlighted-hexagon',
                 type: 'line',
                 source: 'hexagons',
                 layout: {},
                 paint: {
-                    'line-color': '#ff0000',
+                    'line-color': '#00ff00',
                     'line-width': 3
                 },
                 filter: ['==', 'h3index', '']
             });
-
+            
             generateHexagons();
         });
 
@@ -533,21 +549,42 @@
                 var feature = features[0];
                 var h3index = feature.properties.h3index;
                 var center = h3.cellToLatLng(h3index);
-                var boundingBox = h3.cellToBoundary(h3index, true);
+                //var boundingBox = h3.cellToBoundary(h3index, true);
 
                 document.getElementById('hex-info').innerHTML = `
                     <p>H3 Index: ${h3index}</p>
                     <p>H3 Resolution (Grid Zoom Level): ${resolution}</p>
-                    <p>Center Coordinates: ${center[0].toFixed(6)}, ${center[1].toFixed(6)}</p>
+                    <p>Center Coordinates: ${center[0].toFixed(4)}, ${center[1].toFixed(4)}</p>
                 `;
 
                 var site = EcoManApp.state.sites.find(site => site.h3index === h3index);
-                var highlightColor = site ? '#00ff00' : (resolution === 9 ? '#ff0000' : '#00ffff');
+
+                if (resolution===9) {
+                    hex_in_sites = EcoManApp.state.sites.some(site => site.h3index === h3index);
+                    new_project = (hex_in_sites) ? false : true;
+                } else if (resolution>6) {
+                    hex_in_sites = EcoManApp.state.sites.some(site => site.h3index === h3.cellToChildren(h3index,9)[0]);
+                    new_project = (hex_in_sites) ? false : true;
+                } else {
+                    hex_in_sites = false;
+                    new_project = false;
+                }
+                //var color = (resolution === 9 && EcoManApp.state.sites.some(site => site.h3index === h3index)) ? '#00ff00' : '#00ffff'; // Green if in site list and zoom level is 9, else cyan
+                var highlightColor = (hex_in_sites) ? '#00ff00' : ((new_project) ? '#ff0000' : '#00ffff');
+
+                if (new_project) {
+                    document.getElementById('new-project').style.display = 'block';
+                } else {
+                    document.getElementById('new-project').style.display = 'none';
+                }
+
+                //var highlightColor = site ? '#00ff00' : (resolution === 9 ? '#ff0000' : '#00ffff');
 
                 map.setFilter('highlighted-hexagon', ['==', 'h3index', h3index]);
                 map.setPaintProperty('highlighted-hexagon', 'line-color', highlightColor);
                 //map.setPaintProperty('highlighted-hexagon', 'line-width', 3);
-
+                //EcoManApp.state.site = site;
+                /*
                 if (resolution === 9) {
                     EcoManApp.state.h3index = h3index;
                     if (site) {
@@ -569,17 +606,20 @@
                     document.getElementById('site-image').style.display = 'none';
                     document.getElementById('site-data').style.display = 'none';
                 }
+                */
 
                 // Highlight the corresponding site container or unhighlight if non-listed hexagon
                 document.querySelectorAll('.site-container').forEach(container => {
                     container.classList.remove('selected');
                 });
                 if (site) {
-                    const selectedContainer = document.querySelector(`.site-container[h3index="${site.h3index}"]`);
+                    const selectedContainer = document.querySelector(`.site-container[h3index="${h3index}"]`);
                     if (selectedContainer) {
                         selectedContainer.classList.add('selected');
                         selectedContainer.scrollIntoView({ block: 'center', behavior: 'smooth' });
                     }
+                } else {
+                    document.getElementById('hex-info').scrollIntoView({ block: 'center', behavior: 'smooth' });
                 }
             }
         }
@@ -634,7 +674,15 @@
 
             hexagons.forEach(function(h3index) {
                 var coordinates = [h3.cellToBoundary(h3index, true)];
-                var color = (resolution === 9 && EcoManApp.state.sites.some(site => site.h3index === h3index)) ? '#00ff00' : '#00ffff'; // Green if in site list and zoom level is 9, else cyan
+                if (resolution===9) {
+                    hex_in_sites = EcoManApp.state.sites.some(site => site.h3index === h3index);
+                } else if (resolution>6) {
+                    hex_in_sites = EcoManApp.state.sites.some(site => site.h3index === h3.cellToChildren(h3index,9)[0]);
+                } else {
+                    hex_in_sites = false;
+                }
+                //var color = (resolution === 9 && EcoManApp.state.sites.some(site => site.h3index === h3index)) ? '#00ff00' : '#00ffff'; // Green if in site list and zoom level is 9, else cyan
+                var color = (hex_in_sites) ? '#00ff00' : '#00ffff';
                 var feature = {
                     type: 'Feature',
                     geometry: {
