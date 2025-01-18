@@ -39,8 +39,16 @@
                         <input type="text" id="new-project-name" name="new-project-name" />
                         <label for="new-project-description">Description:</label>
                         <textarea id="new-project-description" name="new-project-description" rows="3" cols="50"></textarea>
+                        <button id="new-project-btn">Add new project</button>
                     </div>
-                    <button id="new-project-btn">Zoom to Level 7 to Generate</button>
+                    <div id="new-project-loader" class="loading-container" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Generating new project ...</p>
+                    </div>
+                </div>
+                <div id="project-list-loader" class="loading-container" style="display: block;">
+                    <div class="spinner"></div>
+                    <p>Loading projects ...</p>
                 </div>
                 <div id="project-list"></div>
             </div>
@@ -182,15 +190,15 @@
             });
         }
 
-        function selectSite(h3index) {
+        function selectHex(h3index) {
             const site = EcoManApp.state.sites.find(site => site.h3index === h3index);
-            var center = h3.cellToLatLng(site.h3index);
+            var center = h3.cellToLatLng(h3index);
             //var boundingBox = h3.cellToBoundary(site.h3index, true);
             const resolution = h3.getResolution(h3index);
             console.log('Resolution:', resolution);
 
             document.getElementById('hex-info').innerHTML = `
-                <p>H3 Index: ${site.h3index}</p>
+                <p>H3 Index: ${h3index}</p>
                 <p>H3 Resolution (Grid Zoom Level): ${resolution}</p>
                 <p>Center Coordinates: ${center[0].toFixed(4)}, ${center[1].toFixed(4)}</p>
             `;
@@ -210,17 +218,28 @@
 
             //var highlightColor = site ? '#00ff00' : (res === 9 ? '#ff0000' : '#00ffff');
 
-            map.setFilter('highlighted-hexagon', ['==', 'h3index', site.h3index]);
             map.setPaintProperty('highlighted-hexagon', 'line-color', highlightColor);
+            map.setFilter('highlighted-hexagon', ['==', 'h3index', h3index]);
 
+            if (new_project) {
+                document.getElementById('new-project-name').value = '';
+                document.getElementById('new-project-description').value = '';
+                document.getElementById('new-project').style.display = 'block';
+                checkNewProjectFields()
+            } else {
+                document.getElementById('new-project').style.display = 'none';
+            }
+            
             // Highlight the selected site in the site list
             document.querySelectorAll('.site-container').forEach(container => {
                 container.classList.remove('selected');
             });
-            const selectedContainer = document.querySelector(`.site-container[h3index="${site.h3index}"]`);
+            const selectedContainer = document.querySelector(`.site-container[h3index="${h3index}"]`);
             if (selectedContainer) {
                 selectedContainer.classList.add('selected');
                 selectedContainer.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            } else {
+                document.getElementById('new-hex').scrollIntoView({ block: 'start', behavior: 'smooth' });
             }
         }
 
@@ -236,29 +255,7 @@
                 zoom: 15
             });
 
-            selectSite(h3index);
-
-            /*
-            if (res === 9) {
-                EcoManApp.state.h3index = site.h3index;
-                EcoManApp.state.site = site;
-                if (site) {
-                    updateGenerateButtonState('mint');
-                    document.getElementById('site-image').src = site.image_url;
-                    document.getElementById('site-image').style.display = 'block';
-                    document.getElementById('site-data').style.display = 'block';
-                    //loadSiteData(); // Load site data and generate plot
-                } else {
-                    updateGenerateButtonState('active');
-                    document.getElementById('site-data').style.display = 'none'; // Hide the site-data div if no site is selected
-                }
-            } else {
-                updateGenerateButtonState('inactive');
-                EcoManApp.state.h3index = null;
-                EcoManApp.state.site = null;
-                document.getElementById('site-data').style.display = 'none'; // Hide the site-data div if resolution is not 9
-            }
-            */
+            selectHex(h3index);
         }
 
         function previewURL(site) {
@@ -272,41 +269,45 @@
             return site.preview;
         }
 
+        function formatProject(project) {
+            console.log('Project:', project, );
+            const projectContainer = document.createElement('div');
+            projectContainer.className = 'project-container';
+            projectContainer.style.display = 'block';
+            projectContainer.style.cursor = 'pointer';
+            if (!project.image) project.image = 'landscape-111';
+
+            const descriptionPreview = project.description.length > 200 ? project.description.substring(0, 200) + '...' : project.description;
+
+            projectContainer.innerHTML = `
+                <div class="project-info" style="width: 100%; display: block;">
+                    <img alt="Project image" src="assets/images/${project.image}.png" style="width: 100%; display: ${project.image ? 'block' : 'none'};">
+                    <p class="project-name"><span>${project.name}</span>
+                        <a href="${project.link}" target="_blank"><img src="assets/link.png"/></a>
+                    </p>
+                    <p class="project-description">Description: <span class="description-preview">${descriptionPreview}</span><span class="description-full" style="display: none;">${project.description}</span></p>
+                    <p>Created: <span>${project.timestampStart}</span></p>
+                    <!--<p>H3: <span>${project.h3ID}</span></p>-->
+                    <p>Coordinates: ${project.lat},${project.lon}</p>
+                    <!--<p>State: <span>${project.state}</span></p>-->
+                </div>
+                <div class="site-list" id="${project.projectID}" style="display: none;"></div>
+            `;
+            loadSites(project.projectID);
+            projectContainer.querySelectorAll('.project-info')[0].addEventListener('click', () => toggleProject(project.projectID));
+            return projectContainer;
+        }
+
         async function loadProjects() {
             try {
                 const response = await fetch(`${EcoManApp.config.apiUrl}/listProjects/u28f61076/2`);
-                const data = (await response.json()).reverse();
+                EcoManApp.state.projects = (await response.json()).reverse();
                 const projectList = document.getElementById('project-list');
                 projectList.innerHTML = ''; // Clear any existing content
 
-                EcoManApp.state.projects = data; // Store the project data in the state
-                data.forEach(project => {
-                    console.log('Project:', project, );
-                    const projectContainer = document.createElement('div');
-                    projectContainer.className = 'project-container';
-                    projectContainer.style.display = 'block';
-                    projectContainer.style.cursor = 'pointer';
-
-                    const descriptionPreview = project.description.length > 200 ? project.description.substring(0, 200) + '...' : project.description;
-
-                    projectContainer.innerHTML = `
-                        <div class="project-info" style="width: 100%; display: block;">
-                            <img alt="Project image" src="assets/images/${project.image}.png" style="width: 100%; display: ${project.image ? 'block' : 'none'};">
-                            <p class="project-name"><span>${project.name}</span>
-                                <a href="${project.link}" target="_blank"><img src="assets/link.png"/></a>
-                            </p>
-                            <p class="project-description">Description: <span class="description-preview">${descriptionPreview}</span><span class="description-full" style="display: none;">${project.description}</span></p>
-                            <p>Created: <span>${project.timestampStart}</span></p>
-                            <!--<p>H3: <span>${project.h3ID}</span></p>-->
-                            <p>Coordinates: ${project.lat},${project.lon}</p>
-                            <!--<p>State: <span>${project.state}</span></p>-->
-                        </div>
-                        <div class="site-list" id="${project.projectID}" style="display: none;"></div>
-                    `;
-                    loadSites(project.projectID);
-                    projectContainer.querySelectorAll('.project-info')[0].addEventListener('click', () => toggleProject(project.projectID));
-                    projectList.appendChild(projectContainer);
-                    //siteList.appendChild(document.createElement('hr'));
+                document.getElementById('project-list-loader').style.display = 'none';    
+                EcoManApp.state.projects.forEach(project => {
+                    projectList.appendChild(formatProject(project));
                 });
             } catch (error) {
                 console.error('Error fetching site data:', error);
@@ -339,6 +340,33 @@
             }
 
             panToProject(pid);
+        }
+
+        async function addProject(h3index) {
+            console.log('Adding project for H3:', h3index);
+            //updateGenerateButtonState('active');
+            document.getElementById('new-project').style.display = 'none';
+            document.getElementById('new-project-loader').style.display = 'block';
+            try { 
+                const response = await fetch(`${EcoManApp.config.apiUrl}/addProject/u28f61076/${h3index}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: document.getElementById('new-project-name').value,
+                        description: document.getElementById('new-project-description').value
+                    })
+                });
+                const result = await response.json();
+                console.log('Generation result:', result);
+            } catch (error) {
+                console.error('Error generating content:', error);
+                //updateGenerateButtonState('inactive');
+            }
+            document.getElementById('new-project-loader').style.display = 'none';
+            loadProjects();
+            generateHexagons();
         }
 
         // Fetch data from the API and populate the "My Sites" tab tab tab
@@ -548,82 +576,21 @@
             if (features.length) {
                 var feature = features[0];
                 var h3index = feature.properties.h3index;
-                var center = h3.cellToLatLng(h3index);
+                EcoManApp.state.h3index = h3index;
+                //var center = h3.cellToLatLng(h3index);
                 //var boundingBox = h3.cellToBoundary(h3index, true);
 
-                document.getElementById('hex-info').innerHTML = `
-                    <p>H3 Index: ${h3index}</p>
-                    <p>H3 Resolution (Grid Zoom Level): ${resolution}</p>
-                    <p>Center Coordinates: ${center[0].toFixed(4)}, ${center[1].toFixed(4)}</p>
-                `;
-
-                var site = EcoManApp.state.sites.find(site => site.h3index === h3index);
-
-                if (resolution===9) {
-                    hex_in_sites = EcoManApp.state.sites.some(site => site.h3index === h3index);
-                    new_project = (hex_in_sites) ? false : true;
-                } else if (resolution>6) {
-                    hex_in_sites = EcoManApp.state.sites.some(site => site.h3index === h3.cellToChildren(h3index,9)[0]);
-                    new_project = (hex_in_sites) ? false : true;
-                } else {
-                    hex_in_sites = false;
-                    new_project = false;
-                }
-                //var color = (resolution === 9 && EcoManApp.state.sites.some(site => site.h3index === h3index)) ? '#00ff00' : '#00ffff'; // Green if in site list and zoom level is 9, else cyan
-                var highlightColor = (hex_in_sites) ? '#00ff00' : ((new_project) ? '#ff0000' : '#00ffff');
-
-                if (new_project) {
-                    document.getElementById('new-project').style.display = 'block';
-                } else {
-                    document.getElementById('new-project').style.display = 'none';
-                }
-
-                //var highlightColor = site ? '#00ff00' : (resolution === 9 ? '#ff0000' : '#00ffff');
-
-                map.setFilter('highlighted-hexagon', ['==', 'h3index', h3index]);
-                map.setPaintProperty('highlighted-hexagon', 'line-color', highlightColor);
-                //map.setPaintProperty('highlighted-hexagon', 'line-width', 3);
-                //EcoManApp.state.site = site;
-                /*
-                if (resolution === 9) {
-                    EcoManApp.state.h3index = h3index;
-                    if (site) {
-                        EcoManApp.state.site = site;
-                        updateGenerateButtonState('mint');
-                        document.getElementById('site-image').src = site.image_url;
-                        document.getElementById('site-image').style.display = 'block';
-                        document.getElementById('site-data').style.display = 'block';
-                    } else {
-                        EcoManApp.state.site = null;
-                        updateGenerateButtonState('active');
-                        document.getElementById('site-image').style.display = 'none';
-                        document.getElementById('site-data').style.display = 'none';
-                    }
-                } else {
-                    updateGenerateButtonState('inactive');
-                    EcoManApp.state.site = null;
-                    EcoManApp.state.h3index = null;
-                    document.getElementById('site-image').style.display = 'none';
-                    document.getElementById('site-data').style.display = 'none';
-                }
-                */
-
-                // Highlight the corresponding site container or unhighlight if non-listed hexagon
-                document.querySelectorAll('.site-container').forEach(container => {
-                    container.classList.remove('selected');
-                });
-                if (site) {
-                    const selectedContainer = document.querySelector(`.site-container[h3index="${h3index}"]`);
-                    if (selectedContainer) {
-                        selectedContainer.classList.add('selected');
-                        selectedContainer.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    }
-                } else {
-                    document.getElementById('hex-info').scrollIntoView({ block: 'center', behavior: 'smooth' });
-                }
+                selectHex(h3index);
             }
         }
 
+        document.getElementById('new-project-btn').addEventListener('click', async function() {
+            if (document.getElementById('new-project-btn').enabled) {
+                //console.log('Generating content for H3:', EcoManApp.state.h3index);
+                addProject(EcoManApp.state.h3index);
+            }
+        });
+        /*
         document.getElementById('generate-btn').addEventListener('click', async function() {
             if (EcoManApp.state.h3index) {
                 updateGenerateButtonState('generating');
@@ -649,7 +616,7 @@
                 }
             }
         });
-
+        */
         function generateHexagons() {
             var bounds = map.getBounds();
             var sw = bounds.getSouthWest();
@@ -721,6 +688,25 @@
             map.setPaintProperty('hexagons-outline', 'line-color', ['get', 'color']);
             map.setPaintProperty('site-hexagons-outline', 'line-color', ['get', 'color']);
         }
+
+        function checkNewProjectFields() {
+            const nameField = document.getElementById('new-project-name');
+            const descriptionField = document.getElementById('new-project-description');
+            const newProjectBtn = document.getElementById('new-project-btn');
+            //console.log('Name:', nameField.value, 'Description:', descriptionField.value);
+
+            if (nameField.value.trim() !== '' && descriptionField.value.trim() !== '') {
+                //console.log('Name:', nameField.value, 'Description:', descriptionField.value);
+                newProjectBtn.enabled = true;
+                newProjectBtn.classList.add('active');
+            } else {
+                newProjectBtn.enables = false;
+                newProjectBtn.classList.remove('active');
+            }
+        }
+
+        document.getElementById('new-project-name').addEventListener('input', checkNewProjectFields);
+        document.getElementById('new-project-description').addEventListener('input', checkNewProjectFields);
     </script>
     
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
