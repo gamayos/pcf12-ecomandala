@@ -258,17 +258,6 @@
             selectHex(h3index);
         }
 
-        function previewURL(site) {
-            date = site.timestampStart.substring(0, 10).replace(/-/g, '');
-            //pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
-            h3id1 = h3.cellToParent(site.h3index, 1).substring(0, 5);
-            h3id5 = h3.cellToParent(site.h3index, 5).substring(0, 8);
-            path = h3id1 + '/' + h3id5 + '/' + site.pID;
-            site.preview = `${EcoManApp.dataroot}/${path}/${site.pID}-preview.png`;
-            site.metadata = `${EcoManApp.dataroot}/${path}/${site.pID}-metadata.json`;
-            return site.preview;
-        }
-
         function formatProject(project) {
             console.log('Project:', project, );
             const projectContainer = document.createElement('div');
@@ -369,6 +358,20 @@
             generateHexagons();
         }
 
+        function previewURL(site) {
+            //date = site.timestampStart.substring(0, 10).replace(/-/g, '');
+            //pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
+            //h3id1 = h3.cellToParent(site.h3index, 1).substring(0, 5);
+            //h3id5 = h3.cellToParent(site.h3index, 5).substring(0, 8);
+            date = site.sID.split('-')[1];
+            path = site.h3Trace.replace(/-/g, '/');
+            h3id7 = path.split('/')[2];
+            console.log(path, h3id7, date);
+            site.preview = `${EcoManApp.dataroot}/${path}/${h3id7}-${date}-meteo.png`;
+            site.metadata = `${EcoManApp.dataroot}/${path}/${h3id7}-${date}-meteo.json`;
+            return site.preview;
+        }
+
         // Fetch data from the API and populate the "My Sites" tab tab tab
         async function loadSites(pid) {
             // Highlight the selected site in the site list
@@ -396,9 +399,8 @@
                     //site.pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
                     site.reserved = ((site.state === 'reserved') || (site.state === 'sold')) ? true : false;
                     siteContainer.setAttribute('h3index', site.h3index); // Add h3index attribute
-                    previewURL(site);
-                    if (site.iPFS) site.image_url=`https://c-ipfs-gw.nmkr.io/ipfs/${site.iPFS}`; 
-                    else site.image_url = 'assets/placeholder2.png'; //site.preview;
+                    site.image_url = previewURL(site);
+                    if (site.iPFS) site.image_url=`https://c-ipfs-gw.nmkr.io/ipfs/${site.iPFS}`;
                     //console.log(site.preview, site.image_url);
                     siteContainer.innerHTML = `
                         <div style="width: 70%; display: flex; flex-direction: column; justify-content: space-between;">
@@ -428,7 +430,7 @@
                             </div>
                         </div>
                         <div class="mandala" style="width: 30%;">
-                            <img src="${site.image_url}" alt="Site Image" />
+                            <img src="${site.image_url}" onerror="this.onerror=null; this.src='assets/placeholder2.png';" alt="Site Image" />
                         </div>
                     `;
                     siteContainer.addEventListener('click', () => panToSite(site.h3index));
