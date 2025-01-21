@@ -265,6 +265,7 @@
             projectContainer.style.display = 'block';
             projectContainer.style.cursor = 'pointer';
             if (!project.image) project.image = 'landscape-111';
+            project.state = 'free';
 
             const descriptionPreview = project.description.length > 200 ? project.description.substring(0, 200) + '...' : project.description;
 
@@ -279,6 +280,9 @@
                     <!--<p>H3: <span>${project.h3ID}</span></p>-->
                     <p>Coordinates: ${project.lat},${project.lon}</p>
                     <!--<p>State: <span>${project.state}</span></p>-->
+                    <p class="num-sites" style="display: none;">Number of Sites: <span class="n-sites"></span>
+                        <button class="mint-button" style="display: ${project.state === 'free' ? 'inline' : 'none'};" onclick="mintProject('${project.projectID}')">Mint All</button>
+                    </p>
                 </div>
                 <div class="site-list" id="${project.projectID}" style="display: none;"></div>
             `;
@@ -289,7 +293,7 @@
 
         async function loadProjects() {
             try {
-                const response = await fetch(`${EcoManApp.config.apiUrl}/listProjects/u28f61076/2`);
+                const response = await fetch(`${EcoManApp.config.apiUrl}/listProjects/u28f61076/5`);
                 EcoManApp.state.projects = (await response.json()).reverse();
                 const projectList = document.getElementById('project-list');
                 projectList.innerHTML = ''; // Clear any existing content
@@ -319,13 +323,18 @@
             const projectContainer = document.getElementById(pid).parentElement;
             const descriptionPreview = projectContainer.querySelector('.description-preview');
             const descriptionFull = projectContainer.querySelector('.description-full');
+            const numSites = projectContainer.querySelector('.num-sites');
 
             if (descriptionPreview.style.display === 'none') {
                 descriptionPreview.style.display = 'inline';
                 descriptionFull.style.display = 'none';
+                numSites.style.display = 'none';
+
             } else {
                 descriptionPreview.style.display = 'none';
                 descriptionFull.style.display = 'inline';
+                numSites.style.display = 'block';
+                numSites.querySelector('.n-sites').textContent = project.numSites;
             }
 
             panToProject(pid);
@@ -387,6 +396,7 @@
                 const project = EcoManApp.state.projects.find(project => project.projectID === pid);
                 if (project) {
                     project.sites = data;
+                    project.numSites = data.length;
                 }
                 dataroot = 'https://storage.googleapis.com/ecomandala-preprod-9f3489c8-eb24-4d88'
                 data.forEach(site => {
@@ -439,6 +449,23 @@
                 });
             } catch (error) {
                 console.error('Error fetching site data:', error);
+            }
+        }
+
+        async function mintProject(pid) {
+            //console.log('Minting NFT:', uuid);
+            //return;
+            upid = pid.split('-')[2];
+            try {
+                const response = await fetch(`${EcoManApp.config.apiUrl}/mintProject/u28f61076/${upid}`, { method: 'GET' });
+                const result = await response.json();
+                console.log('Minting successful for: ', upid);
+                //alert('NFT minted successfully!');
+                loadProjects(); // Reload the "My Sites" list after minting
+            } catch (error) {
+                console.log('Error minting NFT:', upid);
+                console.error('Error minting NFT:', error);
+                //alert('Failed to mint NFT.');
             }
         }
 
