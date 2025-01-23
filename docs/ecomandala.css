@@ -113,7 +113,10 @@ body { margin:0; padding:0; background-color: #f4f4f9;}
     background-color: #f0f0f0;
 }
 .project-info {
-    margin-bottom: 10px;
+    width: 100%; 
+    display: block;
+    margin-bottom: 0;
+    cursor: pointer;
 }
 .project-name span {
     margin: 5px 0;
@@ -155,6 +158,11 @@ body { margin:0; padding:0; background-color: #f4f4f9;}
     height: auto;
     padding-right: 20px;
 }
+.project-state {
+    justify-content: space-between; 
+    align-items: center;
+    margin-bottom: 10px;
+}
 .mint-button {
     background-color: green;
     color: white;
@@ -167,9 +175,8 @@ body { margin:0; padding:0; background-color: #f4f4f9;}
     width: 80px;
     font-size: 14px;
     display: flex;
-    vertical-align: middle;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end; /* Justify content to the right */
 }
 #hex-info {
     display: none; /* Hide hex-info initially */
@@ -226,6 +233,16 @@ body { margin:0; padding:0; background-color: #f4f4f9;}
 }
 .loading-container {
     text-align: center;
+}
+.inline-spinner {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    border: 4px solid #ccc;
+    border-top-color: #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    vertical-align: middle;
 }
 .spinner {
     margin: 30px auto 20px;

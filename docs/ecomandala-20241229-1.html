@@ -263,14 +263,14 @@
             const projectContainer = document.createElement('div');
             projectContainer.className = 'project-container';
             projectContainer.style.display = 'block';
-            projectContainer.style.cursor = 'pointer';
+            //projectContainer.style.cursor = 'pointer';
             if (!project.image) project.image = 'landscape-111';
-            project.state = 'free';
+            //project.state = 'free';
 
             const descriptionPreview = project.description.length > 200 ? project.description.substring(0, 200) + '...' : project.description;
 
             projectContainer.innerHTML = `
-                <div class="project-info" style="width: 100%; display: block;">
+                <div class="project-info">
                     <img alt="Project image" src="assets/images/${project.image}.png" style="width: 100%; display: ${project.image ? 'block' : 'none'};">
                     <p class="project-name"><span>${project.name}</span>
                         <a href="${project.link}" target="_blank"><img src="assets/link.png"/></a>
@@ -280,9 +280,11 @@
                     <!--<p>H3: <span>${project.h3ID}</span></p>-->
                     <p>Coordinates: ${project.lat},${project.lon}</p>
                     <!--<p>State: <span>${project.state}</span></p>-->
-                    <p class="num-sites" style="display: none;">Number of Sites: <span class="n-sites"></span>
-                        <button class="mint-button" style="display: ${project.state === 'free' ? 'inline' : 'none'};" onclick="mintProject('${project.projectID}')">Mint All</button>
-                    </p>
+                </div>
+                <div class="project-state" style="display: none;">
+                    <span class="num-sites">Number of Sites: <span class="n-sites"></span></span>
+                    <button class="mint-button" style="display: ${project.state === 'free' ? 'inline' : 'none'};" onclick="mintProject('${project.projectID}')">Mint All</button>
+                    <span class="inline-spinner"style="display: ${project.state === 'reserved' ? 'inline-block' : 'none'};"></span>
                 </div>
                 <div class="site-list" id="${project.projectID}" style="display: none;"></div>
             `;
@@ -323,18 +325,18 @@
             const projectContainer = document.getElementById(pid).parentElement;
             const descriptionPreview = projectContainer.querySelector('.description-preview');
             const descriptionFull = projectContainer.querySelector('.description-full');
-            const numSites = projectContainer.querySelector('.num-sites');
+            const projectState = projectContainer.querySelector('.project-state');
 
             if (descriptionPreview.style.display === 'none') {
                 descriptionPreview.style.display = 'inline';
                 descriptionFull.style.display = 'none';
-                numSites.style.display = 'none';
+                projectState.style.display = 'none';
 
             } else {
                 descriptionPreview.style.display = 'none';
                 descriptionFull.style.display = 'inline';
-                numSites.style.display = 'block';
-                numSites.querySelector('.n-sites').textContent = project.numSites;
+                projectState.style.display = 'flex';
+                projectState.querySelector('.n-sites').textContent = project.numSites;
             }
 
             panToProject(pid);
@@ -365,6 +367,27 @@
             document.getElementById('new-project-loader').style.display = 'none';
             loadProjects();
             generateHexagons();
+        }
+
+        async function mintProject(pid) {
+            //console.log('Minting NFT:', uuid);
+            //return;
+            console.log('Minting project:', pid);
+            const project = EcoManApp.state.projects.find(project => project.projectID === pid);
+            upid = pid.split('-')[2];
+            try {
+                const response = await fetch(`${EcoManApp.config.apiUrl}/mintProject/u28f61076/${upid}`, { method: 'GET' });
+                const result = await response.json();
+                console.log('Minting successful for: ', upid);
+                //alert('NFT minted successfully!');
+                loadProjects(); // Reload the "My Sites" list after minting
+            } catch (error) {
+                console.log('Error minting NFT:', upid);
+                console.error('Error minting NFT:', error);
+                //alert('Failed to mint NFT.');
+            }
+            project.state = 'reserved';
+            formatProject(project); // Reload the "My Sites" list after minting
         }
 
         function previewURL(site) {
@@ -407,7 +430,7 @@
                     date = site.timestampStart.substring(0, 10).replace(/-/g, '');
                     site.h3index = site.sID.split('-')[0];
                     //site.pid = site.h3index + '-' + date + '-' + site.uuid.substring(0, 8);
-                    site.reserved = ((site.state === 'reserved') || (site.state === 'sold')) ? true : false;
+                    site.reserved = ((site.state === 'reserved') || (site.state === 'minted')) ? true : false;
                     siteContainer.setAttribute('h3index', site.h3index); // Add h3index attribute
                     site.image_url = previewURL(site);
                     if (site.iPFS) site.image_url=`https://c-ipfs-gw.nmkr.io/ipfs/${site.iPFS}`;
@@ -436,7 +459,7 @@
                                         <img src="assets/cexplorer.png" style="height: 100%;" />
                                     </a>
                                 </div>
-                                <button class="mint-button" style="display: ${site.state === 'free' ? 'block' : 'none'};" onclick="mintNFT('${site.sID}')">Mint</button>
+                                <button class="mint-button" style="display: ${site.state === 'free' ? 'none' : 'none'};" onclick="mintNFT('${site.sID}')">Mint</button>
                             </div>
                         </div>
                         <div class="mandala" style="width: 30%;">
@@ -449,23 +472,6 @@
                 });
             } catch (error) {
                 console.error('Error fetching site data:', error);
-            }
-        }
-
-        async function mintProject(pid) {
-            //console.log('Minting NFT:', uuid);
-            //return;
-            upid = pid.split('-')[2];
-            try {
-                const response = await fetch(`${EcoManApp.config.apiUrl}/mintProject/u28f61076/${upid}`, { method: 'GET' });
-                const result = await response.json();
-                console.log('Minting successful for: ', upid);
-                //alert('NFT minted successfully!');
-                loadProjects(); // Reload the "My Sites" list after minting
-            } catch (error) {
-                console.log('Error minting NFT:', upid);
-                console.error('Error minting NFT:', error);
-                //alert('Failed to mint NFT.');
             }
         }
 
@@ -619,33 +625,7 @@
                 addProject(EcoManApp.state.h3index);
             }
         });
-        /*
-        document.getElementById('generate-btn').addEventListener('click', async function() {
-            if (EcoManApp.state.h3index) {
-                updateGenerateButtonState('generating');
-                // Display the placeholder image immediately
-                document.getElementById('site-image').src = "assets/placeholder1.png";
-                document.getElementById('site-image').style.display = 'block';
-
-                try {
-                    const response = await fetch(`${EcoManApp.config.apiUrl}/addSite/12345678/${EcoManApp.state.h3index}`, {
-                        method: 'GET'
-                    });
-                    const result = await response.json();
-                    console.log('Generation result:', result);
-                    // Replace the placeholder image with the generated image
-                    EcoManApp.state.site = {'h3index': result['H3-ID'], 'uuid': result['UUID'], 'timestamp': result['Timestamp-start']}
-                    document.getElementById('site-image').src = previewURL(EcoManApp.state.site);
-                    updateGenerateButtonState('mint');
-                    // Reload and regenerate the content of the "My Sites" list
-                    loadSites();
-                } catch (error) {
-                    console.error('Error generating content:', error);
-                    updateGenerateButtonState('inactive');
-                }
-            }
-        });
-        */
+        
         function generateHexagons() {
             var bounds = map.getBounds();
             var sw = bounds.getSouthWest();
