@@ -296,7 +296,7 @@
         async function loadProjects() {
             try {
                 const response = await fetch(`${EcoManApp.config.apiUrl}/listProjects/u28f61076/5`);
-                EcoManApp.state.projects = (await response.json()).reverse();
+                EcoManApp.state.projects = (await response.json()); //.reverse();
                 const projectList = document.getElementById('project-list');
                 projectList.innerHTML = ''; // Clear any existing content
 
