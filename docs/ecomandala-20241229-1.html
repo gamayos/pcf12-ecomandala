@@ -376,7 +376,7 @@
             const project = EcoManApp.state.projects.find(project => project.projectID === pid);
             upid = pid.split('-')[2];
             try {
-                const response = await fetch(`${EcoManApp.config.apiUrl}/mintProject/u28f61076/${upid}`, { method: 'GET' });
+                const response = await fetch(`${EcoManApp.config.apiUrl}/mintProject/u28f61076/${pid}`, { method: 'GET' });
                 const result = await response.json();
                 console.log('Minting successful for: ', upid);
                 //alert('NFT minted successfully!');
@@ -409,7 +409,7 @@
             // Highlight the selected site in the site list
             try {
                 console.log('Loading sites for project:', pid);
-                upid = pid.split('-')[2];
+                upid = pid.split('-')[pid.split('-').length-1];
                 const response = await fetch(`${EcoManApp.config.apiUrl}/listProjectSites/u28f61076/${upid}/0`);
                 const data = (await response.json()); //.reverse();
                 const siteList = document.getElementById(pid);
