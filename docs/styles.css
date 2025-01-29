@@ -1,0 +1,137 @@
+/* /styles.css */
+:root {
+    --primary-color: #2A9D8F;
+    --secondary-color: #264653;
+    --accent-color: #E9C46A;
+    --text-light: #FFFFFF;
+    --text-dark: #333333;
+}
+
+body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    color: var(--text-dark);
+}
+
+.hero {
+    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    min-height: 60vh;
+    color: var(--text-light);
+    position: relative;
+}
+
+.hero p {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+}
+
+nav {
+    padding: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+nav ul {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+}
+
+nav a {
+    color: var(--text-light);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.hero-content {
+    text-align: center;
+    padding: 5rem 2rem;
+}
+
+.hero-content h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.section {
+    padding: 3rem 2rem;
+}
+
+.section.dark {
+    background-color: var(--secondary-color);
+    color: var(--text-light);
+}
+
+.section.dark a {
+    color: #1e90ff;
+    text-decoration: none;
+}
+
+.section.dark a:hover {
+    text-decoration: underline;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.feature-grid, .benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
+}
+
+.feature-card, .benefit-card {
+    padding: 2rem;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover, .benefit-card:hover {
+    transform: translateY(-5px);
+}
+
+.methodology-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+}
+
+.benefits-list {
+    margin-top: 2rem;
+}
+
+.benefits-list li {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+.benefits-list li:before {
+    content: "•";
+    color: var(--accent-color);
+    position: absolute;
+    left: 0;
+}
+
+@media (max-width: 768px) {
+    .methodology-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .hero-content h1 {
+        font-size: 3rem;
+    }
+}
